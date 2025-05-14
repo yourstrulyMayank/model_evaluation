@@ -1,0 +1,5 @@
+flask
+langchain-community
+langchain_ollama
+transformers
+torch

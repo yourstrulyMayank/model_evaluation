@@ -1,0 +1,14 @@
+{% extends "index.html" %}
+{% block content %}
+    <h2>Evaluation History for {{ model_name }}</h2>
+    {% if history %}
+        <ul>
+        {% for record in history %}
+            <li><strong>{{ record.timestamp }}</strong>: {{ record.result }}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No history found for this model.</p>
+    {% endif %}
+    <a href="{{ url_for('index') }}" class="button">Back to Home</a>
+{% endblock %}
