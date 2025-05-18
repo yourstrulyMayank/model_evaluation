@@ -1,6 +1,10 @@
 {
     "gemma-3-1b-it": [
         {
+            "timestamp": "2025-05-18 00:31:23",
+            "result": "Accuracy: 0.88"
+        },
+        {
             "timestamp": "2025-05-14 19:20:00",
             "result": "Accuracy: 0.81"
         },

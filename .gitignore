@@ -2,3 +2,4 @@ venv/
 models/
 log/
 __pycache__/
+evaluation_history.json

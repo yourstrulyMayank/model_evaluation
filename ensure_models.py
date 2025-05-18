@@ -3,12 +3,6 @@ from transformers import AutoModelForCausalLM
 from logger_utils import setup_logger
 logger = setup_logger()
 
-from transformers import AutoModelForCausalLM
-import os
-import logging
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 def ensure_llama3_model(local_path="models/llm/llama3.2", model_name="meta-llama/Llama-3.2-1B", hf_token=None):
     """
