@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import os
 import threading
-from evaluate import run_evaluation, save_result, get_history
+from evaluate import run_evaluation, get_history
 from ensure_models import main as ensure_models
 
 app = Flask(__name__)
@@ -71,7 +71,7 @@ def evaluate(category, model_name):
     def background_task():
         try:
             result = run_evaluation(model_path)
-            save_result(model_name, result)
+            # save_result(model_name, result)
             processing_status[model_name] = "complete"
         except Exception as e:
             print(f"Error during evaluation: {e}")

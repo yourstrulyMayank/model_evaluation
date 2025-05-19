@@ -25,3 +25,5 @@ snapshot_download(
     local_dir="models/llm/gemma-3-1b-it",
     local_dir_use_symlinks=False
 )
+
+ snapshot_download( repo_id = "google-t5/t5-base", local_dir="models/llm/t5-base",local_dir_use_symlinks=False)
