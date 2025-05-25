@@ -1,252 +1,266 @@
-# import json
-# import os
-# from datetime import datetime
-# import seqio
-# from bigbench.bbseqio import tasks  # make sure BIG-bench is installed and bbseqio is available
-# from bigbench.models.huggingface_models import BIGBenchHFModel
-# from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM, AutoModelForSeq2SeqLM
-
-# def load_model(model_name_or_path, local_files_only=True):
-#     config = AutoConfig.from_pretrained(model_name_or_path, local_files_only=local_files_only)
-#     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, local_files_only=local_files_only)
-
-#     # Decide model class based on architecture
-#     if config.is_encoder_decoder:
-#         model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path, config=config, local_files_only=local_files_only)
-#     else:
-#         model = AutoModelForCausalLM.from_pretrained(model_name_or_path, config=config, local_files_only=local_files_only)
-
-#     return tokenizer, model
-
-# class CustomHFModel(BIGBenchHFModel):
-#     def __init__(self, model_name_or_path, max_length=512):
-#          self.tokenizer, self.model = load_model(model_name_or_path)
-#         self.max_length = max_length
-
-#     def generate(self, prompt, max_new_tokens=32):
-#         inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
-#         outputs = self.model.generate(
-#             inputs.input_ids,
-#             max_new_tokens=max_new_tokens,
-#             do_sample=False
-#         )
-#         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-
-
-# HISTORY_FILE = "evaluation_history.json"
-
-# def safe_decode(tensor):
-#     try:
-#         return tensor.numpy().decode("utf-8")
-#     except:
-#         try:
-#             return tensor.numpy().tobytes().decode("utf-8", errors="ignore")
-#         except:
-#             return str(tensor.numpy())
-
-# def run_evaluation(model_name_or_path):
-#     task_name = "bigbench:unit_interpretation.mul.t5_default_vocab.3_shot.25_examples.lv0"
-#     task = seqio.get_mixture_or_task(task_name)
-
-#     ds = task.get_dataset(split="all", sequence_length={"inputs": 512, "targets": 32})
-
-#     model = CustomHFModel(model_name_or_path=model_name_or_path, max_length=512)
-
-#     total = 0
-#     correct = 0
-#     samples = []
-
-#     for i, example in enumerate(ds):
-#         if i >= 10:
-#             break
-
-#         inputs = safe_decode(example["inputs"])
-#         targets = safe_decode(example["targets"])
-
-#         try:
-#             output = model.generate(inputs, max_new_tokens=32)
-
-#             match = output.strip().lower() == targets.strip().lower()
-
-#             samples.append({
-#                 "example_number": i + 1,
-#                 "prompt": inputs,
-#                 "generated": output.strip(),
-#                 "expected": targets.strip(),
-#                 "match": match
-#             })
-
-#             if match:
-#                 correct += 1
-#             total += 1
-#         except Exception as e:
-#             print(f"⚠️ Error on example {i}: {e}")
-
-#     accuracy = correct / total if total > 0 else 0
-
-#     return {
-#         "task": task_name,
-#         "accuracy": round(accuracy * 100, 2),
-#         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-#         "samples": samples
-#     }
-
-# def save_result(model_name, result_dict):
-#     history = {}
-#     if os.path.exists(HISTORY_FILE):
-#         with open(HISTORY_FILE, "r") as f:
-#             history = json.load(f)
-
-#     history.setdefault(model_name, []).insert(0, result_dict)
-
-#     with open(HISTORY_FILE, "w") as f:
-#         json.dump(history, f, indent=4)
-
-
-# def get_history(model_name):
-#     if not os.path.exists(HISTORY_FILE):
-#         return []
-#     with open(HISTORY_FILE, "r") as f:
-#         history = json.load(f)
-#     return history.get(model_name, [])
-
-
-
 import os
 import json
-import argparse
-import importlib
-import traceback
-from datetime import datetime
-
-from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
-from bigbench.api import json_task, util
-from tqdm import tqdm
-
-# -------------------------------
-# Configuration
-# -------------------------------
-TASKS_PATH = "bigbench/benchmark_tasks"
-HISTORY_FILE = "evaluation_results/history.json"
-os.makedirs("evaluation_results", exist_ok=True)
-
-# -------------------------------
-# Smart Model Loader
-# -------------------------------
-def smart_load_model(model_path):
-    try:
-        model = AutoModelForCausalLM.from_pretrained(model_path)
-    except Exception:
-        try:
-            model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
-        except Exception as e:
-            print("Model loading failed:")
-            traceback.print_exc()
-            raise RuntimeError("Could not load model as CausalLM or Seq2SeqLM")
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    return model, tokenizer
-
-# -------------------------------
-# Minimal BIG-bench Model Wrapper
-# -------------------------------
+import torch
+import datetime
+import random
+import re
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, AutoConfig
 from bigbench.api import model as bb_model
-from bigbench.models import model_utils
+from bigbench.api import json_task
+# from bigbench.api import task_utils
+from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoModelForMultipleChoice
 
+task_base = "BIG-bench/bigbench/benchmark_tasks"
+HISTORY_FILE = "evaluation_results/history.json"
+
+MODEL_TYPE_MAP = {
+    "gpt2": "GPT-2",
+    "gptj": "GPT-J",
+    "llama": "LLaMA",
+    "mpt": "MPT",
+    "falcon": "Falcon",
+    "bloom": "BLOOM",
+    "t5": "T5",
+    "bart": "BART",
+    # add others if needed
+}
+model_type = MODEL_TYPE_MAP.get(config.model_type, "Other")
+
+# --------------------- MODEL WRAPPER --------------------- #
 class WrappedHFModel(bb_model.Model):
-    def __init__(self, model, tokenizer):
-        self.model = model
-        self.tokenizer = tokenizer
+    def __init__(self, model_path):
+        config = AutoConfig.from_pretrained(model_path)
+        print(f"📌 Model config: {config}")
+        if config.is_encoder_decoder:
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
+        else:            
+            self.model = AutoModelForCausalLM.from_pretrained(model_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path)        
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
 
-    def generate_text(self, inputs, max_length=1000, stop_string=None, output_regex=None):
+    def generate_text(self, inputs, max_length=256, stop_string=None, output_regex=None):
         if isinstance(inputs, str):
             inputs = [inputs]
-        outputs = []
-        for prompt in inputs:
-            inputs_enc = self.tokenizer(prompt, return_tensors="pt", truncation=True)
-            with torch.no_grad():
-                outputs_ids = self.model.generate(
-                    **inputs_enc, max_new_tokens=100, do_sample=False
-                )
-            out = self.tokenizer.decode(outputs_ids[0], skip_special_tokens=True)
-            out = model_utils.postprocess_output(out, max_length, stop_string, output_regex)
-            outputs.append(out)
-        return outputs if len(outputs) > 1 else outputs[0]
 
-# -------------------------------
-# Load all BIG-Bench Lite tasks
-# -------------------------------
-def get_all_tasks(task_root):
-    task_names = []
-    for task_dir in os.listdir(task_root):
-        full_path = os.path.join(task_root, task_dir)
-        if os.path.isdir(full_path) and "task.json" in os.listdir(full_path):
-            task_names.append(task_dir)
-    return sorted(task_names)
+        encodings = self.tokenizer(inputs, return_tensors="pt", padding=True, truncation=True).to(self.device)
+        outputs = self.model.generate(**encodings, max_new_tokens=max_length)
+        decoded = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
-def load_task(task_name):
-    task_module_name = f"bigbench.benchmark_tasks.{task_name}"
-    task_module = importlib.import_module(task_module_name)
-    module_path = list(task_module.__path__)[0]
-    json_path = os.path.join(module_path, "task.json")
-    return json_task.JsonTask(json_path, shot_list=[0], verbose=False, max_examples=5)
+        return decoded if len(decoded) > 1 else decoded[0]
 
-# -------------------------------
-# Load or initialize history
-# -------------------------------
-def get_history(path):
-    if not os.path.exists(path) or os.path.getsize(path) == 0:
-        return {}
-    with open(path, "r") as f:
-        return json.load(f)
+    def cond_log_prob(self, inputs, targets, absolute_normalization=False):
+        raise NotImplementedError("cond_log_prob is not implemented.")
 
-def save_result(data, path):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
+    def model_data(self):
+        return bb_model.ModelData(
+            model_family="HF",
+            model_name="HFModel",
+            total_params=0,
+            non_embedding_params=0,
+            flop_matched_non_embedding_params=0,
+            training_batch_size=0,
+            training_steps=0,
+            description="Wrapped Hugging Face Model"
+        )
 
-# -------------------------------
-# Main evaluation loop
-# -------------------------------
-def run_evaluation(model_path):
-    print(f"Loading model from: {model_path}")
-    model, tokenizer = smart_load_model(model_path)
-    hf_model = WrappedHFModel(model, tokenizer)
+# --------------------- TASK FILTERING --------------------- #
+def get_all_task_names(task_dir):
+    return [
+        name for name in os.listdir(task_dir)
+        if os.path.isdir(os.path.join(task_dir, name)) and
+        os.path.isfile(os.path.join(task_dir, name, "task.json"))
+    ]
 
-    tasks = get_all_tasks(TASKS_PATH)
-    print(f"Found {len(tasks)} BIG-Bench Lite tasks")
+# def filter_supported_tasks(model, task_dir):    
+#     all_tasks = get_all_task_names(task_dir)
+#     supported = []
 
-    all_results = {}
-    for task_name in tqdm(tasks, desc="Evaluating tasks"):
+#     # Check model type
+#     is_seq2seq = isinstance(model.model, AutoModelForSeq2SeqLM)
+#     print(f"📌 Model type: {'Seq2Seq' if is_seq2seq else 'CausalLM'}")
+
+#     for task_name in all_tasks:
+#         task_path = os.path.join(task_base, task_name, "task.json")
+#         try:
+#             task = json_task.JsonTask(task_path, shot_list=[0])
+
+#             # Use first example to guess if it's suitable
+#             examples = task.examples
+#             if not examples:
+#                 continue
+
+#             ex = examples[0]
+#             has_input = "input" in ex
+#             has_target = "target" in ex
+
+#             # Logic for model compatibility
+#             if is_seq2seq and has_input and has_target:
+#                 supported.append(task_name)
+#             elif not is_seq2seq and has_input and has_target:
+#                 supported.append(task_name)
+
+#         except Exception as e:
+#             print(f"⚠️ Skipping task {task_name}: {e}")
+#             continue
+
+#     return supported
+
+def filter_supported_tasks(model, task_dir):    
+    all_tasks = get_all_task_names(task_dir)
+
+    supported = []
+    is_seq2seq = isinstance(model.model, AutoModelForSeq2SeqLM)
+    is_causal = isinstance(model.model, AutoModelForCausalLM)
+
+    print(f"📌 Model type: {'Seq2SeqLM' if is_seq2seq else 'CausalLM' if is_causal else 'Other'}")
+
+    for task_name in all_tasks:
+        task_path = os.path.join(task_base, task_name, "task.json")
         try:
-            task = load_task(task_name)
-            score = task.evaluate_model(hf_model)
-            all_results[task_name] = score["aggregated_score"]
+            print(f"🔍 Checking task: {task_name}")
+            task = json_task.JsonTask(task_path, shot_list=[0])
+
+            # Validate examples
+            if not task.examples or not isinstance(task.examples, list):
+                continue
+
+            # Read metrics from task JSON directly
+            with open(task_path, 'r') as f:
+                task_json = json.load(f)
+                metrics = task_json.get("metrics", [])
+            
+            # Match based on metrics
+            if "generate_text" in metrics and (is_seq2seq or is_causal):
+                supported.append(task_name)
+            elif "multiple_choice_grade" in metrics:
+                supported.append(task_name)
+
         except Exception as e:
-            all_results[task_name] = f"Error: {str(e)}"
+            print(f"⚠️ Skipping task {task_name}: {e}")
+            continue
 
-    print("\n🧠 Final Evaluation Results:\n")
-    for task, score in all_results.items():
-        print(f"{task}: {score}")
+    print(f"✅ Supported tasks: {len(supported)}")
+    return supported
 
-    # Save to history
-    history = get_history(HISTORY_FILE)
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    history_entry = {
-        "model": model_path,
-        "timestamp": timestamp,
-        "results": all_results
+
+
+# --------------------- TEXT NORMALIZER --------------------- #
+def normalize(text):
+    """Lowercase and remove punctuation for fuzzy matching."""
+    return re.sub(r"[\W_]+", " ", text.lower()).strip()
+
+# --------------------- EVALUATION FUNCTION --------------------- #
+def run_evaluation(model_path):
+    
+    print(f"🔍 Loading model from: {model_path}")
+    model = WrappedHFModel(model_path)
+    
+    results = []
+    
+    num_tasks_to_run = 2
+    print(f"🔍 Loading model from: {model_path}")
+    model = WrappedHFModel(model_path)
+
+    all_supported_tasks = filter_supported_tasks(model, task_base)
+    print(f"📘 Found {len(all_supported_tasks)} BIG-bench tasks.")
+
+    if len(all_supported_tasks) == 0:
+        print("⚠️ No supported tasks found for this model.")
+        return []
+
+    if num_tasks_to_run > len(all_supported_tasks):
+        print(f"⚠️ Only {len(all_supported_tasks)} supported tasks found. Reducing sample size.")
+        num_tasks_to_run = len(all_supported_tasks)
+
+    task_names = random.sample(all_supported_tasks, num_tasks_to_run)
+
+
+    for task_name in sorted(task_names):
+        try:
+            print(f"🚀 Evaluating task: {task_name}")
+            task_path = os.path.join(task_base, task_name, "task.json")
+
+            task = json_task.JsonTask(
+                task_path,
+                shot_list=[0],                
+                verbose=False
+            )
+
+            score_data = task.evaluate_model(model)
+            aggregated_score = score_data.get("aggregated_score", None)
+            if aggregated_score is None:
+                print(f"⚠️ No aggregated_score for task {task_name}")
+                continue
+
+            samples = []
+            for i, ex in enumerate(score_data.get("examples", [])):
+                expected = ex.get("target", "")
+                generated = ex.get("model_response", "")
+
+                if isinstance(expected, list):
+                    expected_text = expected[0] if expected else ""
+                    match = any(normalize(e) in normalize(generated) for e in expected)
+                else:
+                    expected_text = expected
+                    match = normalize(expected_text) in normalize(generated)
+
+                sample = {
+                    "example_number": i + 1,
+                    "prompt": ex.get("input", ""),
+                    "generated": generated,
+                    "expected": expected_text,
+                    "match": match
+                }
+                samples.append(sample)
+
+            results.append({
+                "task": task_name,
+                "accuracy": round(aggregated_score * 100, 2),
+                "samples": samples,
+                "timestamp": datetime.datetime.now().isoformat()
+            })
+
+        except Exception as e:
+            print(f"❌ Error in task '{task_name}': {e}")
+
+    _save_results(model_path, results)
+    print(f"\n✅ Evaluation complete. {len(results)} tasks evaluated.")
+    return results
+
+# --------------------- HISTORY SAVE & LOAD --------------------- #
+def _save_results(model_path, results):
+    entry = {
+        "model_path": model_path,
+        "results": results,
+        "timestamp": datetime.datetime.now().isoformat()
     }
-    history_key = f"{os.path.basename(model_path)}_{timestamp}"
-    history[history_key] = history_entry
-    save_result(history, HISTORY_FILE)
-    print(f"\n✅ Results saved to {HISTORY_FILE}")
 
-# -------------------------------
-# Entry point
-# -------------------------------
-if __name__ == "__main__":
-    import torch
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, required=True, help="Path to Hugging Face model folder")
-    args = parser.parse_args()
-    run_evaluation(args.model)
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r") as f:
+                history = json.load(f)
+        except json.JSONDecodeError:
+            history = []
+    else:
+        history = []
+
+    history.insert(0, entry)  # Latest first
+
+    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(history, f, indent=2)
+
+def get_history(model_name=None):
+    if not os.path.exists(HISTORY_FILE):
+        return []
+
+    try:
+        with open(HISTORY_FILE, "r") as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        return []
+
+    if model_name:
+        return [entry for entry in data if model_name in entry["model_path"]]
+    return data

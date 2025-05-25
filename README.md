@@ -27,3 +27,6 @@ snapshot_download(
 )
 
  snapshot_download( repo_id = "google-t5/t5-base", local_dir="models/llm/t5-base",local_dir_use_symlinks=False)
+
+snapshot_download( repo_id = "google/flan-t5-base", local_dir="models/llm/flan-t5-base")
+snapshot_download( repo_id = "google/flan-t5-small", local_dir="models/llm/flan-t5-small")
