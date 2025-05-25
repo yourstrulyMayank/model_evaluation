@@ -9,7 +9,13 @@ import torch
 import seqio
 from datasets import disable_caching
 from bigbench.bbseqio import tasks, vocabs
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
+    AutoModel,
+    AutoConfig
+)
 
 disable_caching()
 
@@ -21,14 +27,28 @@ def normalize(text):
     return " ".join(text.lower().split())
 
 # --------------------- MAIN EVALUATION FUNCTION --------------------- #
-def run_evaluation(model_name, num_examples=5, max_new_tokens=64):
+def run_evaluation(model_name, num_examples=5, max_new_tokens=128):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"🔧 Device: {device}")
     
     print(f"🔍 Loading model: {model_name}")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
-    
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token 
+    config = AutoConfig.from_pretrained(model_name)
+    print(f"📦 Model config: {config}")
+    if config.architectures:
+        arch = config.architectures[0].lower()
+        if 'seq2seq' in arch or 't5' in arch or 'bart' in arch:
+            model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+        elif 'causallm' in arch or 'gpt' in arch or 'gemma' in arch:
+            model = AutoModelForCausalLM.from_pretrained(model_name)
+        else:
+            model = AutoModel.from_pretrained(model_name)
+    else:
+        # Fallback to CausalLM if architecture is not defined
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+    model.to(device)
     vocab = vocabs.ALL_VOCABS["t5_default"]
     mixture_names = [
         "bigbench:bigbench_lite_v1.mix.t5_default_vocab.0_shot.1024_examples"
