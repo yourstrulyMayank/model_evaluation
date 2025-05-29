@@ -140,6 +140,11 @@
             background-color: #ffffff;
             color: #1d1d1f;
             }
+            .dashed-line {
+            width: 80%; /* or 100%, or a fixed value */
+            border-top: 1px dashed #aaa;
+            margin: 20px auto; /* centers it horizontally */
+            }
     </style>
 </head>
 <body>
@@ -200,7 +205,7 @@
                     </div>
                 </div>
                 
-                <p>-------------------------------------------------</p>
+                <div class="dashed-line"></div>
                 {% endfor %}
             {% else %}
                 <p><em>No models found.</em></p>
