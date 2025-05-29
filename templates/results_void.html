@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Evaluation Results</title>
+    <style>
+        body {
+            font-family: "San Francisco", "Helvetica Neue", Arial, sans-serif;
+            padding: 30px;
+            background-color: #fff;
+        }
+        h1 {
+            color: #0071e3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Latest Evaluation Result: {{ model_name }}</h1>
+
+    {% if history %}
+            {% set latest = history[0] %}
+            {% for task_result in latest.results %}
+        <h2>{{ task_result.task }}</h2>
+        <table>
+            <tr><th>Accuracy</th><td>{{ task_result.accuracy }}%</td></tr>
+            <tr><th>Timestamp</th><td>{{ task_result.timestamp }}</td></tr>
+        </table>
+
+        <h3>Sample Predictions</h3>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Prompt</th>
+                <th>Generated</th>
+                <th>Expected</th>
+                <th>Match</th>
+            </tr>
+            {% for s in task_result.samples %}
+                <tr>
+                    <td>{{ s.example_number }}</td>
+                    <td><pre>{{ s.prompt }}</pre></td>
+                    <td><pre>{{ s.generated }}</pre></td>
+                    <td><pre>{{ s.expected }}</pre></td>
+                    <td>{{ "✅" if s.match else "❌" }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endfor %}
+
+    {% else %}
+        <p>No evaluation history found.</p>
+    {% endif %}
+</body>
+</html>
