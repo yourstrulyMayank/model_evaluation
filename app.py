@@ -209,10 +209,10 @@ def download_report(model_name):
     
     try:
         # Load results data
-        history_file = "evaluation_results/history.json"
+        history_file = "evaluation_results/history.json"        
         if os.path.exists(history_file):
             with open(history_file, 'r') as f:
-                all_history = json.load(f)
+                all_history = json.load(f)                
             history_data = [entry for entry in all_history if model_name in entry["model_path"]]
         else:
             history_data = []
