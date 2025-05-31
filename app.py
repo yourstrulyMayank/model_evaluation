@@ -6,7 +6,9 @@ import json
 import datetime
 from io import BytesIO
 import base64
-
+import os
+from datetime import datetime
+from collections import defaultdict
 # Import your evaluation functions
 
 from evaluate_llm import get_history, run_evaluation, _save_enhanced_results 
@@ -164,26 +166,171 @@ def check_status(model_name):
         "progress": progress
     })
 
-@app.route('/history/<model_name>')
-def history(model_name):
-    # Try to get enhanced results first, fallback to old format
+@app.route('/history/<category>/<model_name>')
+def history(category, model_name):
+    """Display benchmark history for a specific model."""
     try:
-        history_file = "evaluation_results/history.json"
+        # Load history data
+        history_file = "evaluation_results/allbenchmarkhistory.json"
+        history_data = []
+        
         if os.path.exists(history_file):
             with open(history_file, 'r') as f:
                 all_history = json.load(f)
-            history_data = [entry for entry in all_history if model_name in entry["model_path"]]
-        else:
-            history_data = get_history(model_name)  # Fallback to old system
-    except:
-        history_data = []
+            
+            # Filter data for this specific model
+            model_history = [entry for entry in all_history if model_name in entry.get("model_path", "")]
+            
+            # Sort by run number
+            model_history.sort(key=lambda x: x.get("run", 0))
+            
+            # Process the history data for the template
+            history_data = []
+            for entry in model_history:
+                processed_entry = {
+                    'run': f"Run {entry.get('run', 1)}",
+                    'scores': {entry.get('benchmark', 'BIG-Bench'): entry.get('average', 0)},
+                    'average': entry.get('average', 0)
+                }
+                history_data.append(processed_entry)
+            
+        # Define all benchmarks we want to track
+        benchmark_list = [
+            "MMLU", "HellaSwag", "PIQA", "SocialIQA", "BooIQ", 
+            "WinoGrande", "CommonsenseQA", "OpenBookQA", "ARC-e", 
+            "ARC-c", "TriviaQA", "Natural Questions", "HumanEval", 
+            "MBPP", "GSM8K", "MATH", "AGIEval", "BIG-Bench"
+        ]
+        
+        # Calculate benchmark averages
+        benchmark_averages = {}
+        benchmark_counts = defaultdict(int)
+        benchmark_sums = defaultdict(float)
+        
+        for entry in history_data:
+            for benchmark, score in entry['scores'].items():
+                if score != 'N/A' and isinstance(score, (int, float)):
+                    benchmark_sums[benchmark] += score
+                    benchmark_counts[benchmark] += 1
+        
+        for benchmark in benchmark_list:
+            if benchmark_counts[benchmark] > 0:
+                benchmark_averages[benchmark] = benchmark_sums[benchmark] / benchmark_counts[benchmark]
+            else:
+                benchmark_averages[benchmark] = 'N/A'
+        
+        # Calculate summary statistics
+        all_scores = []
+        benchmarks_tested = set()
+        
+        for entry in history_data:
+            for benchmark, score in entry['scores'].items():
+                if score != 'N/A' and isinstance(score, (int, float)):
+                    all_scores.append(score)
+                    benchmarks_tested.add(benchmark)
+        
+        benchmark_stats = {
+            'benchmarks_tested': len(benchmarks_tested),
+            'overall_average': sum(all_scores) / len(all_scores) if all_scores else 0,
+            'best_score': max(all_scores) if all_scores else 0
+        }
+        
+        return render_template('history.html',
+                             model_name=model_name,
+                             category=category,
+                             history_data=history_data,
+                             benchmark_list=benchmark_list,
+                             benchmark_averages=benchmark_averages,
+                             benchmark_stats=benchmark_stats)
     
-    return render_template('history.html', model_name=model_name, history=history_data)
+    except Exception as e:
+        print(f"Error loading history: {e}")
+        return render_template('history.html',
+                             model_name=model_name,
+                             category=category,
+                             history_data=[],
+                             benchmark_list=[],
+                             benchmark_averages={},
+                             benchmark_stats={'benchmarks_tested': 0, 'overall_average': 0, 'best_score': 0})
+
+def extract_score_from_results(results):
+    """Extract a score from various result formats."""
+    try:
+        # Handle different possible result structures
+        if isinstance(results, dict):
+            # Look for common score fields
+            score_fields = ['accuracy', 'score', 'exact_match', 'f1', 'bleu', 'rouge_l']
+            
+            for field in score_fields:
+                if field in results:
+                    value = results[field]
+                    if isinstance(value, (int, float)):
+                        return value * 100 if value <= 1.0 else value
+                    elif isinstance(value, dict) and 'mean' in value:
+                        mean_val = value['mean']
+                        return mean_val * 100 if mean_val <= 1.0 else mean_val
+            
+            # If no direct score field, look for nested structures
+            if 'metrics' in results:
+                return extract_score_from_results(results['metrics'])
+            
+            if 'summary' in results:
+                return extract_score_from_results(results['summary'])
+        
+        elif isinstance(results, (int, float)):
+            return results * 100 if results <= 1.0 else results
+    
+    except:
+        pass
+    
+    return None
+
+# @app.route('/results/<model_name>')
+# def analyze(model_name):
+#     """Enhanced results page with comprehensive metrics display."""
+#     try:
+#         # Load enhanced results
+#         history_file = "evaluation_results/history.json"
+#         if os.path.exists(history_file):
+#             with open(history_file, 'r') as f:
+#                 all_history = json.load(f)
+#             history_data = [entry for entry in all_history if model_name in entry["model_path"]]
+#         else:
+#             # Fallback to old format
+#             history_data = get_history(model_name)
+            
+#     except Exception as e:
+#         print(f"Error loading results: {e}")
+#         history_data = []
+    
+#     return render_template('results.html', model_name=model_name, history=history_data)
 
 @app.route('/results/<model_name>')
 def analyze(model_name):
     """Enhanced results page with comprehensive metrics display."""
     try:
+        # Determine category for this model
+        category = None
+        categories_mapping = {
+            "LLMs": "llm",
+            "Other GenAI Models": "genai", 
+            "DL Models": "dl",
+            "ML Models": "ml"
+        }
+        
+        # Find which category this model belongs to
+        for display_name, folder in categories_mapping.items():
+            path = os.path.join(model_base_path, folder)
+            if os.path.exists(path):
+                models = [model for model in os.listdir(path) if os.path.isdir(os.path.join(path, model))]
+                if model_name in models:
+                    category = display_name
+                    break
+        
+        # Default to LLMs if not found
+        if not category:
+            category = "LLMs"
+        
         # Load enhanced results
         history_file = "evaluation_results/history.json"
         if os.path.exists(history_file):
@@ -197,8 +344,12 @@ def analyze(model_name):
     except Exception as e:
         print(f"Error loading results: {e}")
         history_data = []
+        category = "LLMs"
     
-    return render_template('results.html', model_name=model_name, history=history_data)
+    return render_template('results.html', model_name=model_name, history=history_data, category=category)
+
+
+
 
 @app.route('/download_report/<model_name>')
 def download_report(model_name):

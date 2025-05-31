@@ -1,14 +1,633 @@
-{% extends "index.html" %}
-{% block content %}
-    <h2>Evaluation History for {{ model_name }}</h2>
-    {% if history %}
-        <ul>
-        {% for record in history %}
-            <li><strong>{{ record.timestamp }}</strong>: {{ record.result }}</li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>No history found for this model.</p>
-    {% endif %}
-    <a href="{{ url_for('index') }}" class="button">Back to Home</a>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Evaluation Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        header img {
+            height: 40px;
+        }
+
+        header h1 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        nav {
+            padding: 1rem 2rem;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        nav a:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .model-info {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .model-info h2 {
+            color: #2c3e50;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card h3 {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            color: #2c3e50;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .scroll-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            overflow-x: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .history-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .timestamp-header {
+            min-width: 120px;
+            writing-mode: horizontal-tb;
+        }
+
+        .benchmark-name {
+            text-align: left !important;
+            font-weight: 600;
+            color: #2c3e50;
+            background: rgba(52, 73, 94, 0.05);
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+
+        .score-cell {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .score-high {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+        }
+
+        .score-medium {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .score-low {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .score-na {
+            background: #bdc3c7;
+            color: #7f8c8d;
+        }
+
+        .average-row {
+            background: rgba(52, 73, 94, 0.1);
+            font-weight: bold;
+        }
+
+        .average-row .benchmark-name {
+            background: rgba(52, 73, 94, 0.2);
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .no-data h3 {
+            color: #7f8c8d;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .no-data p {
+            color: #95a5a6;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .stats-summary {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+
+            header {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            header h1 {
+                font-size: 1.5rem;
+            }
+        }
+         /* body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #f9f9f9;
+    color: #1d1d1f;
+    min-height: 100vh;
+}
+
+header {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header img {
+    height: 36px;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1d1d1f;
+}
+
+nav {
+    background: none;
+    padding: 1rem 2rem;
+}
+
+nav a {
+    color: #0071e3;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.model-info {
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid #e5e5e5;
+    margin-bottom: 2rem;
+}
+
+.model-info h2 {
+    font-size: 1.6rem;
+    margin-bottom: 0.25rem;
+    color: #1d1d1f;
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.btn {
+    background-color: #0071e3;
+    color: white;
+    padding: 0.6rem 1.4rem;
+    border-radius: 10px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn:hover {
+    background-color: #005bb5;
+}
+
+.btn-secondary {
+    background-color: #e0e0e0;
+    color: #1d1d1f;
+}
+
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background-color: #ffffff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+.stat-card h3 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: #6e6e73;
+    margin-bottom: 0.3rem;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #1d1d1f;
+}
+
+.scroll-container {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    background-color: #ffffff;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+
+.history-table th,
+.history-table td {
+    padding: 1rem;
+    text-align: center;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.history-table th {
+    background-color: #f2f2f2;
+    color: #1d1d1f;
+    font-weight: 600;
+}
+
+.benchmark-name {
+    text-align: left;
+    font-weight: 600;
+    background-color: #fafafa;
+    color: #1d1d1f;
+}
+
+.score-cell {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.score-high {
+    background-color: #e6f4ea;
+    color: #1d1d1f;
+}
+
+.score-medium {
+    background-color: #fff8e1;
+    color: #1d1d1f;
+}
+
+.score-low {
+    background-color: #fdecea;
+    color: #1d1d1f;
+}
+
+.score-na {
+    background-color: #f5f5f5;
+    color: #a0a0a0;
+}
+
+.average-row {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.no-data {
+    text-align: center;
+    padding: 4rem 2rem;
+    background-color: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+}
+
+.no-data h3 {
+    font-size: 1.25rem;
+    color: #6e6e73;
+    margin-bottom: 0.75rem;
+}
+
+.no-data p {
+    color: #8e8e93;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    header h1 {
+        font-size: 1.25rem;
+    }
+} */
+
+    </style>
+</head>
+<body>
+    <header>
+        <img src="/static/infosys.png" alt="Logo">
+        <h1>Model Evaluation Dashboard</h1>
+        <img src="/static/ABCBank.png" alt="Logo">
+    </header>
+
+    <nav>
+        <a href="/">← Back to Dashboard</a>
+    </nav>
+
+    <div class="container">
+        <div class="model-info">
+            <h2>{{ model_name }}</h2>
+            <p>Benchmark Evaluation History</p>
+        </div>
+
+        <div class="actions">
+            <a href="/" class="btn btn-secondary">← Back to Models</a>
+            {% if history_data %}
+            <a href="#" class="btn" onclick="exportToCSV()">📊 Export to CSV</a>
+            {% endif %}
+        </div>
+
+        {% if history_data %}
+            <!-- Summary Statistics -->
+            <div class="stats-summary">
+                <div class="stat-card">
+                    <h3>Total Evaluations</h3>
+                    <div class="stat-value">{{ history_data|length }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Benchmarks Tested</h3>
+                    <div class="stat-value">{{ benchmark_stats.benchmarks_tested }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Overall Average</h3>
+                    <div class="stat-value">{{ "%.1f"|format(benchmark_stats.overall_average) }}%</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Best Score</h3>
+                    <div class="stat-value">{{ "%.1f"|format(benchmark_stats.best_score) }}%</div>
+                </div>
+            </div>
+
+            <!-- Vertical History Table -->
+            <div class="scroll-container">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Benchmark</th>
+                            {% for entry in history_data %}
+                            <th class="timestamp-header">{{ entry.run }}</th>
+                            {% endfor %}
+                            <th style="border-left: 3px solid white; background-color: #0071e3;">Average</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for benchmark in benchmark_list %}
+                        <tr>
+                            <td class="benchmark-name">{{ benchmark }}</td>
+                            {% for entry in history_data %}
+                                {% set score = entry.scores.get(benchmark, 'N/A') %}
+                                <td class="score-cell 
+                                    {% if score != 'N/A' %}
+                                        {% if score >= 80 %}score-high
+                                        {% elif score >= 60 %}score-medium
+                                        {% else %}score-low{% endif %}
+                                    {% else %}score-na{% endif %}">
+                                    {% if score != 'N/A' %}{{ "%.1f"|format(score) }}%{% else %}N/A{% endif %}
+                                </td>
+                            {% endfor %}
+                            <td class="score-cell 
+                                {% set avg_score = benchmark_averages.get(benchmark, 'N/A') %}
+                                {% if avg_score != 'N/A' %}
+                                    {% if avg_score >= 80 %}score-high
+                                    {% elif avg_score >= 60 %}score-medium
+                                    {% else %}score-low{% endif %}
+                                {% else %}score-na{% endif %}" 
+                                style="border-left: 3px solid #0071e3; font-weight: bold;">
+                                {% if avg_score != 'N/A' %}{{ "%.1f"|format(avg_score) }}%{% else %}N/A{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        
+                        <!-- Overall Average Row -->
+                        <tr class="average-row">
+                            <td class="benchmark-name"><strong>OVERALL AVERAGE</strong></td>
+                            {% for entry in history_data %}
+                                <td class="score-cell">
+                                    {% if entry.average != 'N/A' %}{{ "%.1f"|format(entry.average) }}%{% else %}N/A{% endif %}
+                                </td>
+                            {% endfor %}
+                            <td class="score-cell" style="border-left: 3px solid white; font-weight: bold;">
+                                {{ "%.1f"|format(benchmark_stats.overall_average) }}%
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="no-data">
+                <h3>No evaluation history found</h3>
+                <p>This model hasn't been evaluated yet. Go back to the dashboard to start an evaluation.</p>
+                <a href="/" class="btn">← Back to Dashboard</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function exportToCSV() {
+            // Get table data
+            const table = document.querySelector('.history-table');
+            let csv = [];
+            
+            // Get headers
+            const headers = [];
+            table.querySelectorAll('thead th').forEach(th => {
+                headers.push(th.textContent.trim());
+            });
+            csv.push(headers.join(','));
+            
+            // Get data rows (excluding average row)
+            const rows = table.querySelectorAll('tbody tr:not(.average-row)');
+            rows.forEach(row => {
+                const rowData = [];
+                row.querySelectorAll('td').forEach(td => {
+                    rowData.push('"' + td.textContent.trim() + '"');
+                });
+                csv.push(rowData.join(','));
+            });
+            
+            // Add overall average row
+            const avgRow = table.querySelector('tbody tr.average-row');
+            if (avgRow) {
+                const avgData = [];
+                avgRow.querySelectorAll('td').forEach(td => {
+                    avgData.push('"' + td.textContent.trim() + '"');
+                });
+                csv.push(avgData.join(','));
+            }
+            
+            // Download CSV
+            const csvContent = csv.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{{ model_name }}_benchmark_history.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
