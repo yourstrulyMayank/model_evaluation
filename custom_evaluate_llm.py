@@ -46,7 +46,13 @@ def get_progress(model_name):
     with progress_lock:
         return progress_tracker.get(model_name, {'stage': 0, 'message': 'Not started'})
 
-
+def clear_progress(model_name):
+    """Clear progress tracking for a specific model."""
+    with progress_lock:
+        if model_name in progress_tracker:
+            del progress_tracker[model_name]
+    print(f"🧹 Cleared progress tracking for {model_name}")
+    
 def extract_answer_from_image(image: Image.Image, prompt: str) -> str:
     """Use Donut to extract an answer from image given a prompt."""
     print(f"📄 Processing prompt: {prompt}")

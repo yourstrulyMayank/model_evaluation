@@ -193,20 +193,63 @@
             text-align: center;
             line-height: 1.3;
         }
+        /* Redo Button Styles */
+        .redo-section {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ffc107;
+        }
+
+        .redo-btn {
+            background: linear-gradient(135deg, #ffc107, #ffb300);
+            color: #212529;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+        }
+
+        .redo-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #ffb300, #ff8f00);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+        }
+
+        .redo-btn:disabled {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            color: #fff;
+        }
+
+        .redo-note {
+            margin: 10px 0 0 0;
+            color: #856404;
+            font-size: 14px;
+            font-style: italic;
+        }
 
         /* Back Button */
         .back-button {
             position: fixed;
             bottom: 30px;
             left: 30px;
-            width: 100px;
-            height: 100px;
+            width: 120px;
+            height: 50px;
             background: linear-gradient(135deg, #007acc, #0056b3);
             color: white;
             border: none;
-            border-radius: 50%;
+            border-radius: 25px; /* This makes it rounded rectangle */
             cursor: pointer;
-            font-size: 24px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -217,19 +260,28 @@
         }
 
         .back-button:hover {
-            transform: translateY(-3px) scale(1.1);
+            transform: translateY(-3px) scale(1.05);
             box-shadow: 0 8px 25px rgba(0, 122, 204, 0.5);
             background: linear-gradient(135deg, #0056b3, #004080);
         }
 
         .back-button:active {
-            transform: translateY(-1px) scale(1.05);
+            transform: translateY(-1px) scale(1.02);
         }
 
         .results-section {
             display: none;
         }
-
+        @media (max-width: 768px) {
+            .back-button {
+                bottom: 20px;
+                left: 20px;
+                width: 100px;
+                height: 45px;
+                font-size: 14px;
+                border-radius: 22px;
+            }
+        }
         .summary-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -445,7 +497,14 @@
     <div class="container">
         <div class="card">
             <h1>Custom Evaluation for {{ model_name }}</h1>
-
+            {% if evaluation_results and not evaluation_results.get('error') %}
+                <div class="redo-section">
+                    <button class="redo-btn" id="redoEvalBtn" onclick="redoEvaluation()">
+                        🔄 Redo Evaluation
+                    </button>
+                    <p class="redo-note">Clear current results and run evaluation again</p>
+                </div>
+                {% endif %}
             <!-- Evaluation Start Section -->
             <div class="eval-section" id="eval-section">
                 <h2>Ready to Evaluate</h2>
@@ -617,6 +676,52 @@
             if (stage <= 5 && stage > 0) {
                 document.getElementById(`stage-${stage}`).classList.add('active');
             }
+        }
+
+        function redoEvaluation() {
+            const redoBtn = document.getElementById('redoEvalBtn');
+            
+            if (!confirm('This will clear the current results and start a new evaluation. Continue?')) {
+                return;
+            }
+            
+            // Disable button
+            redoBtn.disabled = true;
+            redoBtn.textContent = '🔄 Clearing...';
+            
+            // Clear previous results
+            fetch(`/clear_custom_results/{{ model_name }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Hide results section and show evaluation section
+                    document.getElementById('results-section').style.display = 'none';
+                    document.getElementById('eval-section').style.display = 'block';
+                    
+                    // Reset button
+                    redoBtn.disabled = false;
+                    redoBtn.textContent = '🔄 Redo Evaluation';
+                    
+                    // Hide redo section
+                    document.querySelector('.redo-section').style.display = 'none';
+                    
+                } else {
+                    showError('Failed to clear results: ' + data.message);
+                    redoBtn.disabled = false;
+                    redoBtn.textContent = '🔄 Redo Evaluation';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Failed to clear results: ' + error.message);
+                redoBtn.disabled = false;
+                redoBtn.textContent = '🔄 Redo Evaluation';
+            });
         }
 
         function startCustomEvaluation() {

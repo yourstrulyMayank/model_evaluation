@@ -12,7 +12,7 @@ from collections import defaultdict
 from werkzeug.utils import secure_filename
 import uuid
 # Import your evaluation functions
-from custom_evaluate_llm import run_custom_evaluation, get_progress
+
 from evaluate_llm import get_history, run_evaluation, _save_enhanced_results 
 
 
@@ -117,6 +117,29 @@ def run_evaluation_in_background(model_name, model_path, eval_params):
 
     threading.Thread(target=background_task).start()
 
+@app.route('/clear_custom_results/<model_name>', methods=['POST'])
+def clear_custom_results(model_name):
+    """Clear custom evaluation results for a model."""
+    try:
+        # Clear from global storage
+        if model_name in custom_evaluation_results:
+            del custom_evaluation_results[model_name]
+        
+        # Clear processing status
+        status_key = f"{model_name}_custom"
+        if status_key in processing_status:
+            del processing_status[status_key]
+        
+        # Clear progress tracking from custom_evaluate_llm
+        from custom_evaluate_llm import clear_progress
+        clear_progress(model_name)
+        
+        return jsonify({'status': 'success', 'message': 'Results cleared successfully'})
+        
+    except Exception as e:
+        print(f"Error clearing results for {model_name}: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/evaluate_model/<category>/<model_name>')
 def evaluate(category, model_name):
     categories = {
@@ -165,7 +188,7 @@ def custom_llm(model_name):
 def run_custom_evaluation_route(model_name):
     try:
         # Import custom evaluator
-        
+        from custom_evaluate_llm import run_custom_evaluation
         
         # Get model path
         model_path = os.path.join(model_base_path, "llm", model_name)
@@ -211,7 +234,7 @@ def check_custom_status(model_name):
     status_key = f"{model_name}_custom"
     status = processing_status.get(status_key, "not_started")
     results = custom_evaluation_results.get(model_name, {})
-    
+    from custom_evaluate_llm import get_progress
     # Get progress information from custom_evaluate_llm
     progress_info = get_progress(model_name)
     
