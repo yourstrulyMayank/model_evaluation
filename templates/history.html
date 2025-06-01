@@ -1,148 +1,218 @@
+<!-- history.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Model Evaluation Dashboard</title>
+    <title>Model Evaluation History - {{ model_name }}</title>
     <style>
-        * {
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
         }
 
         header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            padding: 10px 20px;
+            background-color: #f4f4f4;
         }
 
         header img {
-            height: 40px;
-        }
-
-        header h1 {
-            color: #2c3e50;
-            font-size: 1.8rem;
-            font-weight: 600;
+            height: 75px;
         }
 
         nav {
-            padding: 1rem 2rem;
+            width: 100%;
+            text-align: left;
+            padding: 10px 20px;
+            background-color: #005bb5;
         }
 
         nav a {
             color: white;
             text-decoration: none;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 0.5rem 1rem;
-            border-radius: 25px;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
+            font-size: 16px;
+            margin-right: 20px;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
         }
 
         nav a:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
+            background-color: #0071e3;
         }
 
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            position: relative;
         }
 
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #0071e3;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #005bb5;
+            border-bottom: 2px solid #0071e3;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* Floating Back Button */
+        .back-button {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #007acc, #0056b3);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-shadow: 0 6px 20px rgba(0, 122, 204, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-button:hover {
+            transform: translateY(-3px) scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 122, 204, 0.5);
+            background: linear-gradient(135deg, #0056b3, #004080);
+        }
+
+        .back-button:active {
+            transform: translateY(-1px) scale(1.05);
+        }
+
+        /* Model Info Section */
         .model-info {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 2rem;
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
             border-radius: 15px;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #e3f2fd;
+            text-align: center;
         }
 
         .model-info h2 {
-            color: #2c3e50;
+            color: #0071e3;
             font-size: 2rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 10px;
+            border: none;
         }
 
+        .model-info p {
+            color: #005bb5;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        /* Actions Section */
         .actions {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
+            gap: 15px;
+            margin-bottom: 30px;
             flex-wrap: wrap;
+            justify-content: center;
         }
 
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #28a745, #20c997);
             color: white;
             text-decoration: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 25px;
+            padding: 12px 24px;
+            border-radius: 8px;
             font-weight: 500;
             transition: all 0.3s ease;
             border: none;
             cursor: pointer;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
         }
 
         .btn:hover {
+            background: linear-gradient(135deg, #218838, #1aa085);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
         }
 
-        .btn-secondary {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        .btn-export {
+            background: linear-gradient(135deg, #007acc, #0056b3);
+            box-shadow: 0 4px 15px rgba(0, 122, 204, 0.3);
         }
 
+        .btn-export:hover {
+            background: linear-gradient(135deg, #0056b3, #004080);
+            box-shadow: 0 6px 20px rgba(0, 122, 204, 0.4);
+        }
+
+        /* Statistics Summary */
         .stats-summary {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
         }
 
         .stat-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 1.5rem;
-            border-radius: 15px;
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
             text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+            border-left: 4px solid #0071e3;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
         }
 
         .stat-card h3 {
-            color: #7f8c8d;
-            font-size: 0.9rem;
+            color: #6c757d;
+            font-size: 14px;
             font-weight: 500;
-            margin-bottom: 0.5rem;
+            margin-bottom: 10px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
 
         .stat-value {
-            color: #2c3e50;
+            color: #0071e3;
             font-size: 2rem;
-            font-weight: 700;
+            font-weight: bold;
+            margin: 0;
         }
 
+        /* Table Container */
         .scroll-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            background-color: white;
             border-radius: 15px;
             overflow-x: auto;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e3f2fd;
         }
 
         .history-table {
@@ -153,22 +223,23 @@
 
         .history-table th,
         .history-table td {
-            padding: 1rem;
+            padding: 15px;
             text-align: center;
             border-bottom: 1px solid #ecf0f1;
         }
 
         .history-table th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #007acc, #0056b3);
             color: white;
             font-weight: 600;
             position: sticky;
             top: 0;
             z-index: 10;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
         .timestamp-header {
-            min-width: 120px;
+            min-width: 140px;
             writing-mode: horizontal-tb;
         }
 
@@ -176,73 +247,104 @@
             text-align: left !important;
             font-weight: 600;
             color: #2c3e50;
-            background: rgba(52, 73, 94, 0.05);
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
             position: sticky;
             left: 0;
             z-index: 5;
+            border-right: 2px solid #e3f2fd;
         }
 
         .score-cell {
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
+            border-radius: 5px;
         }
 
         .score-high {
-            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            background: linear-gradient(135deg, #28a745, #20c997);
             color: white;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
         }
 
         .score-medium {
-            background: linear-gradient(135deg, #f39c12, #e67e22);
+            background: linear-gradient(135deg, #ffc107, #ff9800);
             color: white;
+            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
         }
 
         .score-low {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            background: linear-gradient(135deg, #dc3545, #c82333);
             color: white;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
         }
 
         .score-na {
-            background: #bdc3c7;
-            color: #7f8c8d;
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: white;
+            box-shadow: 0 2px 8px rgba(108, 117, 125, 0.2);
         }
 
         .average-row {
-            background: rgba(52, 73, 94, 0.1);
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
             font-weight: bold;
+            border-top: 3px solid #007acc;
         }
 
         .average-row .benchmark-name {
-            background: rgba(52, 73, 94, 0.2);
+            background: linear-gradient(135deg, #007acc, #0056b3);
+            color: white;
         }
 
+        .average-row .score-cell {
+            background: linear-gradient(135deg, #007acc, #0056b3);
+            color: white;
+            font-weight: bold;
+        }
+
+        /* No Data Section */
         .no-data {
             text-align: center;
-            padding: 4rem 2rem;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            padding: 60px 30px;
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
             border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 2px dashed #007acc;
         }
 
         .no-data h3 {
-            color: #7f8c8d;
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
+            color: #007acc;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            font-weight: 600;
         }
 
         .no-data p {
-            color: #95a5a6;
-            margin-bottom: 2rem;
+            color: #6c757d;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
         }
 
+        .no-data-icon {
+            font-size: 4rem;
+            color: #007acc;
+            margin-bottom: 20px;
+            opacity: 0.7;
+        }
+
+        /* Enhanced Icons */
+        .icon {
+            margin-right: 8px;
+        }
+
+        /* Responsive Design */
         @media (max-width: 768px) {
             .container {
-                padding: 1rem;
+                padding: 15px;
             }
 
             .stats-summary {
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
             }
 
             .stat-value {
@@ -250,341 +352,189 @@
             }
 
             header {
-                padding: 1rem;
+                padding: 10px;
                 flex-direction: column;
-                gap: 1rem;
+                gap: 10px;
             }
 
-            header h1 {
+            header img {
+                height: 50px;
+            }
+
+            .actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+                text-align: center;
+            }
+
+            .back-button {
+                bottom: 20px;
+                left: 20px;
+                width: 60px;
+                height: 60px;
+                font-size: 18px;
+            }
+
+            .model-info h2 {
                 font-size: 1.5rem;
             }
+
+            .history-table th,
+            .history-table td {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
         }
-         /* body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background-color: #f9f9f9;
-    color: #1d1d1f;
-    min-height: 100vh;
-}
 
-header {
-    background-color: #ffffff;
-    border-bottom: 1px solid #e0e0e0;
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+        /* Loading Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-header img {
-    height: 36px;
-}
+        .card {
+            animation: fadeIn 0.6s ease-out;
+        }
 
-header h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #1d1d1f;
-}
+        /* Hover Effects */
+        .history-table tbody tr:hover {
+            background-color: rgba(0, 113, 227, 0.05);
+        }
 
-nav {
-    background: none;
-    padding: 1rem 2rem;
-}
-
-nav a {
-    color: #0071e3;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-nav a:hover {
-    text-decoration: underline;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem;
-}
-
-.model-info {
-    background-color: #ffffff;
-    padding: 2rem;
-    border-radius: 12px;
-    border: 1px solid #e5e5e5;
-    margin-bottom: 2rem;
-}
-
-.model-info h2 {
-    font-size: 1.6rem;
-    margin-bottom: 0.25rem;
-    color: #1d1d1f;
-}
-
-.actions {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-}
-
-.btn {
-    background-color: #0071e3;
-    color: white;
-    padding: 0.6rem 1.4rem;
-    border-radius: 10px;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.btn:hover {
-    background-color: #005bb5;
-}
-
-.btn-secondary {
-    background-color: #e0e0e0;
-    color: #1d1d1f;
-}
-
-.stats-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.stat-card {
-    background-color: #ffffff;
-    padding: 1.5rem;
-    border-radius: 12px;
-    border: 1px solid #e0e0e0;
-    text-align: center;
-}
-
-.stat-card h3 {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    color: #6e6e73;
-    margin-bottom: 0.3rem;
-}
-
-.stat-value {
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: #1d1d1f;
-}
-
-.scroll-container {
-    overflow-x: auto;
-    border-radius: 12px;
-    border: 1px solid #e0e0e0;
-    background-color: #ffffff;
-}
-
-.history-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 800px;
-}
-
-.history-table th,
-.history-table td {
-    padding: 1rem;
-    text-align: center;
-    border-bottom: 1px solid #e5e5e5;
-}
-
-.history-table th {
-    background-color: #f2f2f2;
-    color: #1d1d1f;
-    font-weight: 600;
-}
-
-.benchmark-name {
-    text-align: left;
-    font-weight: 600;
-    background-color: #fafafa;
-    color: #1d1d1f;
-}
-
-.score-cell {
-    font-weight: 500;
-    font-size: 0.9rem;
-}
-
-.score-high {
-    background-color: #e6f4ea;
-    color: #1d1d1f;
-}
-
-.score-medium {
-    background-color: #fff8e1;
-    color: #1d1d1f;
-}
-
-.score-low {
-    background-color: #fdecea;
-    color: #1d1d1f;
-}
-
-.score-na {
-    background-color: #f5f5f5;
-    color: #a0a0a0;
-}
-
-.average-row {
-    background-color: #f2f2f2;
-    font-weight: bold;
-}
-
-.no-data {
-    text-align: center;
-    padding: 4rem 2rem;
-    background-color: #ffffff;
-    border-radius: 12px;
-    border: 1px solid #e0e0e0;
-}
-
-.no-data h3 {
-    font-size: 1.25rem;
-    color: #6e6e73;
-    margin-bottom: 0.75rem;
-}
-
-.no-data p {
-    color: #8e8e93;
-}
-
-@media (max-width: 768px) {
-    .container {
-        padding: 1rem;
-    }
-
-    header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-
-    header h1 {
-        font-size: 1.25rem;
-    }
-} */
-
+        .history-table tbody tr:not(.average-row):hover .benchmark-name {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #007acc;
+        }
     </style>
 </head>
 <body>
     <header>
-        <img src="/static/infosys.png" alt="Logo">
-        <h1>Model Evaluation Dashboard</h1>
-        <img src="/static/ABCBank.png" alt="Logo">
+        <img src="/static/infosys.png" alt="Infosys Logo">
+        <h1>Model Evaluation History</h1>
+        <img src="/static/ABCBank.png" alt="ABC Bank Logo">
     </header>
 
     <nav>
-        <a href="/">← Back to Dashboard</a>
+        <a href="/"></a>
     </nav>
 
-    <div class="container">
-        <div class="model-info">
-            <h2>{{ model_name }}</h2>
-            <p>Benchmark Evaluation History</p>
-        </div>
+    <!-- Floating Back Button -->
+    <a href="/" class="back-button" title="Back to Dashboard">
+        ←Back
+    </a>
 
-        <div class="actions">
-            <a href="/" class="btn btn-secondary">← Back to Models</a>
+    <div class="container">
+        <div class="card">
+            <div class="model-info">
+                <h2><span class="icon">Model: </span>{{ model_name }}</h2>
+                <p>Comprehensive Benchmark Evaluation History & Performance Analytics</p>
+            </div>
+
             {% if history_data %}
-            <a href="#" class="btn" onclick="exportToCSV()">📊 Export to CSV</a>
+                <!-- Summary Statistics -->
+                <div class="stats-summary">
+                    <div class="stat-card">
+                        <h3><span class="icon">📈</span>Total Evaluations</h3>
+                        <div class="stat-value">{{ history_data|length }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3><span class="icon">🎯</span>Benchmarks Tested</h3>
+                        <div class="stat-value">{{ benchmark_stats.benchmarks_tested }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3><span class="icon">⭐</span>Overall Average</h3>
+                        <div class="stat-value">{{ "%.1f"|format(benchmark_stats.overall_average) }}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3><span class="icon">🏆</span>Best Score</h3>
+                        <div class="stat-value">{{ "%.1f"|format(benchmark_stats.best_score) }}%</div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="actions">
+                    <a href="#" class="btn btn-export" onclick="exportToCSV()">
+                        <span class="icon">📊</span>Export to CSV
+                    </a>
+                </div>
+
+                <!-- Enhanced History Table -->
+                <div class="scroll-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th><span class="icon">📋</span>Benchmark</th>
+                                {% for entry in history_data %}
+                                <th class="timestamp-header"><span class="icon">📅</span>{{ entry.run }}</th>
+                                {% endfor %}
+                                <th style="border-left: 3px solid rgba(255,255,255,0.3);"><span class="icon">📊</span>Average</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for benchmark in benchmark_list %}
+                            <tr>
+                                <td class="benchmark-name">{{ benchmark }}</td>
+                                {% for entry in history_data %}
+                                    {% set score = entry.scores.get(benchmark, 'N/A') %}
+                                    <td class="score-cell 
+                                        {% if score != 'N/A' %}
+                                            {% if score >= 80 %}score-high
+                                            {% elif score >= 60 %}score-medium
+                                            {% else %}score-low{% endif %}
+                                        {% else %}score-na{% endif %}">
+                                        {% if score != 'N/A' %}{{ "%.1f"|format(score) }}%{% else %}N/A{% endif %}
+                                    </td>
+                                {% endfor %}
+                                <td class="score-cell 
+                                    {% set avg_score = benchmark_averages.get(benchmark, 'N/A') %}
+                                    {% if avg_score != 'N/A' %}
+                                        {% if avg_score >= 80 %}score-high
+                                        {% elif avg_score >= 60 %}score-medium
+                                        {% else %}score-low{% endif %}
+                                    {% else %}score-na{% endif %}" 
+                                    style="border-left: 3px solid rgba(0,122,204,0.3); font-weight: bold;">
+                                    {% if avg_score != 'N/A' %}{{ "%.1f"|format(avg_score) }}%{% else %}N/A{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            
+                            <!-- Overall Average Row -->
+                            <tr class="average-row">
+                                <td class="benchmark-name"><strong><span class="icon">🎯</span>OVERALL AVERAGE</strong></td>
+                                {% for entry in history_data %}
+                                    <td class="score-cell">
+                                        {% if entry.average != 'N/A' %}{{ "%.1f"|format(entry.average) }}%{% else %}N/A{% endif %}
+                                    </td>
+                                {% endfor %}
+                                <td class="score-cell" style="border-left: 3px solid rgba(255,255,255,0.3); font-weight: bold;">
+                                    {{ "%.1f"|format(benchmark_stats.overall_average) }}%
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="no-data">
+                    <div class="no-data-icon">📊</div>
+                    <h3>No evaluation history found</h3>
+                    <p>This model hasn't been evaluated yet. Go back to the dashboard to start your first comprehensive evaluation and begin tracking performance metrics.</p>
+                </div>
             {% endif %}
         </div>
-
-        {% if history_data %}
-            <!-- Summary Statistics -->
-            <div class="stats-summary">
-                <div class="stat-card">
-                    <h3>Total Evaluations</h3>
-                    <div class="stat-value">{{ history_data|length }}</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Benchmarks Tested</h3>
-                    <div class="stat-value">{{ benchmark_stats.benchmarks_tested }}</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Overall Average</h3>
-                    <div class="stat-value">{{ "%.1f"|format(benchmark_stats.overall_average) }}%</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Best Score</h3>
-                    <div class="stat-value">{{ "%.1f"|format(benchmark_stats.best_score) }}%</div>
-                </div>
-            </div>
-
-            <!-- Vertical History Table -->
-            <div class="scroll-container">
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>Benchmark</th>
-                            {% for entry in history_data %}
-                            <th class="timestamp-header">{{ entry.run }}</th>
-                            {% endfor %}
-                            <th style="border-left: 3px solid white; background-color: #0071e3;">Average</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for benchmark in benchmark_list %}
-                        <tr>
-                            <td class="benchmark-name">{{ benchmark }}</td>
-                            {% for entry in history_data %}
-                                {% set score = entry.scores.get(benchmark, 'N/A') %}
-                                <td class="score-cell 
-                                    {% if score != 'N/A' %}
-                                        {% if score >= 80 %}score-high
-                                        {% elif score >= 60 %}score-medium
-                                        {% else %}score-low{% endif %}
-                                    {% else %}score-na{% endif %}">
-                                    {% if score != 'N/A' %}{{ "%.1f"|format(score) }}%{% else %}N/A{% endif %}
-                                </td>
-                            {% endfor %}
-                            <td class="score-cell 
-                                {% set avg_score = benchmark_averages.get(benchmark, 'N/A') %}
-                                {% if avg_score != 'N/A' %}
-                                    {% if avg_score >= 80 %}score-high
-                                    {% elif avg_score >= 60 %}score-medium
-                                    {% else %}score-low{% endif %}
-                                {% else %}score-na{% endif %}" 
-                                style="border-left: 3px solid #0071e3; font-weight: bold;">
-                                {% if avg_score != 'N/A' %}{{ "%.1f"|format(avg_score) }}%{% else %}N/A{% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        
-                        <!-- Overall Average Row -->
-                        <tr class="average-row">
-                            <td class="benchmark-name"><strong>OVERALL AVERAGE</strong></td>
-                            {% for entry in history_data %}
-                                <td class="score-cell">
-                                    {% if entry.average != 'N/A' %}{{ "%.1f"|format(entry.average) }}%{% else %}N/A{% endif %}
-                                </td>
-                            {% endfor %}
-                            <td class="score-cell" style="border-left: 3px solid white; font-weight: bold;">
-                                {{ "%.1f"|format(benchmark_stats.overall_average) }}%
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="no-data">
-                <h3>No evaluation history found</h3>
-                <p>This model hasn't been evaluated yet. Go back to the dashboard to start an evaluation.</p>
-                <a href="/" class="btn">← Back to Dashboard</a>
-            </div>
-        {% endif %}
     </div>
 
     <script>
         function exportToCSV() {
+            {% if not history_data %}
+                alert('No data available to export.');
+                return;
+            {% endif %}
+            
             // Get table data
             const table = document.querySelector('.history-table');
             let csv = [];
@@ -592,7 +542,7 @@ nav a:hover {
             // Get headers
             const headers = [];
             table.querySelectorAll('thead th').forEach(th => {
-                headers.push(th.textContent.trim());
+                headers.push(th.textContent.trim().replace(/[📋📅📊]/g, ''));
             });
             csv.push(headers.join(','));
             
@@ -611,7 +561,7 @@ nav a:hover {
             if (avgRow) {
                 const avgData = [];
                 avgRow.querySelectorAll('td').forEach(td => {
-                    avgData.push('"' + td.textContent.trim() + '"');
+                    avgData.push('"' + td.textContent.trim().replace(/[🎯]/g, '') + '"');
                 });
                 csv.push(avgData.join(','));
             }
@@ -628,6 +578,14 @@ nav a:hover {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
         }
+
+        // Add loading animation
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+            });
+        });
     </script>
 </body>
 </html>
