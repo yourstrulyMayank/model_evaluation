@@ -24,11 +24,30 @@
             height: 75px;
         }
 
+        nav {
+            width: 100%;
+            text-align: left;
+            padding: 10px 20px;
+            background-color: #005bb5;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        nav a:hover {
+            background-color: #0071e3;
+        }
+
         .container {
             max-width: 1200px;
             margin: 20px auto;
             padding: 20px;
-            position: relative;
         }
 
         .card {
@@ -55,74 +74,48 @@
         .eval-section {
             text-align: center;
             padding: 30px;
-            background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
+            background-color: #f8f9ff;
             border-radius: 10px;
             margin-bottom: 20px;
-            border: 1px solid #e3f2fd;
         }
 
         .eval-btn {
-            background: linear-gradient(135deg, #28a745, #20c997);
+            background-color: #28a745;
             color: white;
             font-size: 18px;
             padding: 15px 40px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            transition: background-color 0.3s;
         }
 
         .eval-btn:hover:not(:disabled) {
-            background: linear-gradient(135deg, #218838, #1aa085);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+            background-color: #218838;
         }
 
         .eval-btn:disabled {
-            background: linear-gradient(135deg, #6c757d, #5a6268);
+            background-color: #6c757d;
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
 
-        /* Enhanced Status Section */
         .status-section {
             display: none;
             text-align: center;
-            padding: 40px;
-            background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
-            border-radius: 15px;
-            border: 2px solid #007acc;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .status-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            animation: shimmer 2s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
+            padding: 30px;
+            background-color: #fff3cd;
+            border-radius: 10px;
+            border: 1px solid #ffeaa7;
         }
 
         .spinner {
-            border: 4px solid #e3f2fd;
-            border-top: 4px solid #007acc;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0071e3;
             border-radius: 50%;
             width: 60px;
             height: 60px;
             animation: spin 1s linear infinite;
             margin: 0 auto 20px;
-            box-shadow: 0 4px 15px rgba(0, 122, 204, 0.2);
         }
 
         @keyframes spin {
@@ -131,98 +124,15 @@
         }
 
         .status-text {
-            font-size: 20px;
-            font-weight: 600;
-            color: #007acc;
-            margin-bottom: 15px;
-            text-shadow: 0 1px 3px rgba(0, 122, 204, 0.1);
+            font-size: 18px;
+            font-weight: 500;
+            color: #856404;
+            margin-bottom: 10px;
         }
 
         .status-detail {
-            font-size: 16px;
-            color: #0056b3;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-
-        /* Progress Stages */
-        .progress-stages {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 30px;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .stage {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 15px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.8);
-            min-width: 120px;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-
-        .stage.active {
-            background: linear-gradient(135deg, #007acc, #0056b3);
-            color: white;
-            border-color: #004080;
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(0, 122, 204, 0.3);
-        }
-
-        .stage.completed {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-            border-color: #1e7e34;
-        }
-
-        .stage-icon {
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
-
-        .stage-text {
-            font-size: 12px;
-            font-weight: 500;
-            text-align: center;
-            line-height: 1.3;
-        }
-
-        /* Back Button */
-        .back-button {
-            position: fixed;
-            bottom: 30px;
-            left: 30px;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #007acc, #0056b3);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            box-shadow: 0 6px 20px rgba(0, 122, 204, 0.4);
-            transition: all 0.3s ease;
-            z-index: 1000;
-        }
-
-        .back-button:hover {
-            transform: translateY(-3px) scale(1.1);
-            box-shadow: 0 8px 25px rgba(0, 122, 204, 0.5);
-            background: linear-gradient(135deg, #0056b3, #004080);
-        }
-
-        .back-button:active {
-            transform: translateY(-1px) scale(1.05);
+            font-size: 14px;
+            color: #6c757d;
         }
 
         .results-section {
@@ -383,26 +293,6 @@
             color: #6c757d;
             margin-top: 5px;
         }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .progress-stages {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .stage {
-                min-width: 200px;
-            }
-            
-            .back-button {
-                bottom: 20px;
-                left: 20px;
-                width: 50px;
-                height: 50px;
-                font-size: 20px;
-            }
-        }
     </style>
 </head>
 <body>
@@ -412,10 +302,9 @@
         <img src="/static/ABCBank.png" alt="Logo">
     </header>
 
-    <!-- Enhanced Back Button -->
-    <a href="/" class="back-button" title="Back to Dashboard">
-        ←
-    </a>
+    <nav>
+        <a href="/">← Back to Dashboard</a>
+    </nav>
 
     <div class="container">
         <div class="card">
@@ -423,42 +312,18 @@
 
             <!-- Evaluation Start Section -->
             <div class="eval-section" id="eval-section">
-                <h2>Ready to Evaluate</h2>
+                <h2>🚀 Ready to Evaluate</h2>
                 <p>This evaluation will process files from the uploads folder and analyze the model's performance on document understanding and transaction analysis tasks.</p>
                 <button class="eval-btn" id="startEvalBtn" onclick="startCustomEvaluation()">
                     Start Custom Evaluation
                 </button>
             </div>
 
-            <!-- Enhanced Status Section -->
+            <!-- Status Section -->
             <div class="status-section" id="status-section">
                 <div class="spinner"></div>
                 <div class="status-text" id="status-text">Initializing evaluation...</div>
-                <div class="status-detail">Please wait while we process your files and run the evaluation.</div>
-                
-                <!-- Progress Stages -->
-                <div class="progress-stages">
-                    <div class="stage" id="stage-1">
-                        <div class="stage-icon">🔄</div>
-                        <div class="stage-text">Loading Models</div>
-                    </div>
-                    <div class="stage" id="stage-2">
-                        <div class="stage-icon">📄</div>
-                        <div class="stage-text">Processing Files</div>
-                    </div>
-                    <div class="stage" id="stage-3">
-                        <div class="stage-icon">🔍</div>
-                        <div class="stage-text">Analyzing Content</div>
-                    </div>
-                    <div class="stage" id="stage-4">
-                        <div class="stage-icon">📊</div>
-                        <div class="stage-text">Comparing Results</div>
-                    </div>
-                    <div class="stage" id="stage-5">
-                        <div class="stage-icon">✅</div>
-                        <div class="stage-text">Finalizing</div>
-                    </div>
-                </div>
+                <div class="status-detail">This may take several minutes depending on the number of files and their complexity.</div>
             </div>
 
             <!-- Results Section -->
@@ -559,33 +424,7 @@
     </div>
 
     <script>
-        let currentStage = 0;
-        const stages = [
-            "Loading models and initializing...",
-            "Processing uploaded files...",
-            "Analyzing document content...",
-            "Comparing with ground truth...",
-            "Finalizing evaluation..."
-        ];
-
-        function updateProgressStage(stage) {
-            // Reset all stages
-            for (let i = 1; i <= 5; i++) {
-                const stageEl = document.getElementById(`stage-${i}`);
-                stageEl.classList.remove('active', 'completed');
-            }
-            
-            // Mark completed stages
-            for (let i = 1; i < stage; i++) {
-                document.getElementById(`stage-${i}`).classList.add('completed');
-            }
-            
-            // Mark current stage as active
-            if (stage <= 5) {
-                document.getElementById(`stage-${stage}`).classList.add('active');
-            }
-        }
-
+        // Custom evaluation handling
         function startCustomEvaluation() {
             const startBtn = document.getElementById('startEvalBtn');
             const statusSection = document.getElementById('status-section');
@@ -596,10 +435,6 @@
             startBtn.textContent = 'Processing...';
             statusSection.style.display = 'block';
             evalSection.style.display = 'none';
-
-            // Start with first stage
-            currentStage = 1;
-            updateProgressStage(currentStage);
 
             // Start evaluation
             fetch(`/run_custom_evaluation/{{ model_name }}`, {
@@ -625,7 +460,7 @@
 
         function pollEvaluationStatus() {
             const statusText = document.getElementById('status-text');
-            let pollCount = 0;
+            let dots = 0;
             
             const pollInterval = setInterval(() => {
                 fetch(`/check_custom_status/{{ model_name }}`)
@@ -635,33 +470,20 @@
                     
                     if (data.status === 'complete') {
                         clearInterval(pollInterval);
-                        // Complete all stages
-                        for (let i = 1; i <= 5; i++) {
-                            document.getElementById(`stage-${i}`).classList.remove('active');
-                            document.getElementById(`stage-${i}`).classList.add('completed');
-                        }
-                        statusText.textContent = 'Evaluation completed successfully!';
-                        setTimeout(() => showResults(data.results), 1500);
+                        showResults(data.results);
                     } else if (data.status === 'error') {
                         clearInterval(pollInterval);
                         showError('Evaluation failed: ' + (data.results?.error || 'Unknown error'));
                     } else if (data.status === 'processing') {
-                        // Progress through stages
-                        pollCount++;
-                        if (pollCount % 3 === 0 && currentStage < 5) {
-                            currentStage++;
-                            updateProgressStage(currentStage);
-                        }
-                        
-                        // Update status text with current stage
-                        const stageText = stages[currentStage - 1] || 'Processing...';
-                        statusText.textContent = stageText;
+                        // Animate status text
+                        dots = (dots + 1) % 4;
+                        statusText.textContent = 'Processing files and running evaluation' + '.'.repeat(dots);
                     }
                 })
                 .catch(error => {
                     console.error('Status check error:', error);
                 });
-            }, 2000);
+            }, 2000); // Check every 2 seconds
         }
 
         function showResults(results) {

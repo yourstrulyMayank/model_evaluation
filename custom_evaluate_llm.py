@@ -1,4 +1,4 @@
-# custom_evaluate_llm.py
+# new custom_evaluate_llm.py
 
 import os
 import pandas as pd
@@ -265,6 +265,7 @@ def find_files_in_directory(upload_dir):
     return image_file, transaction_file, ground_truth_file
 
 
+
 def run_custom_evaluation(model_name, model_path, upload_dir):
     """
     Main function to run custom evaluation - this is what app.py imports and calls.
@@ -274,17 +275,19 @@ def run_custom_evaluation(model_name, model_path, upload_dir):
     print(f"📁 Upload directory: {upload_dir}")
     
     try:
-        # Find required files
-        image_file, transaction_file, ground_truth_file = find_files_in_directory(upload_dir)
+        # Use fixed file paths instead of dynamic discovery
+        image_file = os.path.join(upload_dir,'bank_2.png')
+        transaction_file = os.path.join(upload_dir,'transaction details.xlsx')
+        ground_truth_file = os.path.join(upload_dir,'Ground_truth_data.xlsx')
         
-        # Validate required files
+        # Validate required files exist
         missing_files = []
-        if not image_file:
-            missing_files.append("Image file (.png, .jpg, .jpeg)")
-        if not transaction_file:
-            missing_files.append("Transaction file (containing 'transaction' or 'trans' in name)")
-        if not ground_truth_file:
-            missing_files.append("Ground truth file (containing 'ground' or 'truth' in name)")
+        if not os.path.exists(image_file):
+            missing_files.append(f"Image file: {image_file}")
+        if not os.path.exists(transaction_file):
+            missing_files.append(f"Transaction file: {transaction_file}")
+        if not os.path.exists(ground_truth_file):
+            missing_files.append(f"Ground truth file: {ground_truth_file}")
         
         if missing_files:
             error_msg = f"Missing required files: {', '.join(missing_files)}"
@@ -304,6 +307,7 @@ def run_custom_evaluation(model_name, model_path, upload_dir):
             ground_truth_file
         )
         
+        # Rest of the function remains the same...
         print("📊 Processing evaluation results...")
         
         # Calculate summary statistics
@@ -358,22 +362,22 @@ def run_custom_evaluation(model_name, model_path, upload_dir):
             }
         }
         
-        print("💾 Saving evaluation results...")
+        # print("💾 Saving evaluation results...")
         
-        # Save detailed results to JSON file
-        results_dir = "evaluation_results"
-        os.makedirs(results_dir, exist_ok=True)
+        # # Save detailed results to JSON file
+        # results_dir = "evaluation_results"
+        # os.makedirs(results_dir, exist_ok=True)
         
-        results_file = os.path.join(results_dir, f"{model_name}_custom_evaluation.json")
-        with open(results_file, 'w') as f:
-            json.dump(results, f, indent=2)
+        # results_file = os.path.join(results_dir, f"{model_name}_custom_evaluation.json")
+        # with open(results_file, 'w') as f:
+        #     json.dump(results, f, indent=2)
         
-        print(f"✅ Results saved to: {results_file}")
+        # print(f"✅ Results saved to: {results_file}")
         
-        # Also save the detailed DataFrame as CSV
-        csv_file = os.path.join(results_dir, f"{model_name}_detailed_results.csv")
-        evaluation_df.to_csv(csv_file, index=False)
-        print(f"📊 Detailed results saved to: {csv_file}")
+        # # Also save the detailed DataFrame as CSV
+        # csv_file = os.path.join(results_dir, f"{model_name}_detailed_results.csv")
+        # evaluation_df.to_csv(csv_file, index=False)
+        # print(f"📊 Detailed results saved to: {csv_file}")
         
         print("🎉 Custom evaluation completed successfully!")
         return results
