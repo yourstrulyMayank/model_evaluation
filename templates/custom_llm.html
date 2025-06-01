@@ -371,6 +371,28 @@
             border-radius: 8px;
             text-align: center;
         }
+        nav {
+            width: 100%;
+            text-align: left;
+            padding: 10px 20px;
+            background-color: #005bb5;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            margin-right: 20px;
+        }
+
+        nav a.greyed {
+            color: #ccc;
+            pointer-events: none;
+        }
+
+        nav a:hover:not(.greyed) {
+            background-color: #0071e3;
+        }
 
         .info-value {
             font-size: 20px;
@@ -411,7 +433,9 @@
         <h1>Custom Model Evaluation</h1>
         <img src="/static/ABCBank.png" alt="Logo">
     </header>
-
+    <nav>
+        <a href="/"></a>
+    </nav>
     <!-- Enhanced Back Button -->
     <a href="/" class="back-button" title="Back to Dashboard">
         ←
@@ -575,57 +599,64 @@
                 stageEl.classList.remove('active', 'completed');
             }
             
+            // If stage 6 (completion), mark all as completed
+            if (stage >= 6) {
+                for (let i = 1; i <= 5; i++) {
+                    document.getElementById(`stage-${i}`).classList.add('completed');
+                }
+                return;
+            }
+            
             // Mark completed stages
             for (let i = 1; i < stage; i++) {
                 document.getElementById(`stage-${i}`).classList.add('completed');
             }
             
             // Mark current stage as active
-            if (stage <= 5) {
+            if (stage <= 5 && stage > 0) {
                 document.getElementById(`stage-${stage}`).classList.add('active');
             }
         }
 
         function startCustomEvaluation() {
-            const startBtn = document.getElementById('startEvalBtn');
-            const statusSection = document.getElementById('status-section');
-            const evalSection = document.getElementById('eval-section');
-            
-            // Disable button and show status
-            startBtn.disabled = true;
-            startBtn.textContent = 'Processing...';
-            statusSection.style.display = 'block';
-            evalSection.style.display = 'none';
+                    const startBtn = document.getElementById('startEvalBtn');
+                    const statusSection = document.getElementById('status-section');
+                    const evalSection = document.getElementById('eval-section');
+                    
+                    // Disable button and show status
+                    startBtn.disabled = true;
+                    startBtn.textContent = 'Processing...';
+                    statusSection.style.display = 'block';
+                    evalSection.style.display = 'none';
 
-            // Start with first stage
-            currentStage = 1;
-            updateProgressStage(currentStage);
+                    // Start with first stage
+                    currentStage = 1;
+                    updateProgressStage(currentStage);
 
-            // Start evaluation
-            fetch(`/run_custom_evaluation/{{ model_name }}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+                    // Start evaluation
+                    fetch(`/run_custom_evaluation/{{ model_name }}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'started') {
+                            // Start polling for status
+                            pollEvaluationStatus();
+                        } else {
+                            showError('Failed to start evaluation: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showError('Failed to start evaluation: ' + error.message);
+                    });
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'started') {
-                    // Start polling for status
-                    pollEvaluationStatus();
-                } else {
-                    showError('Failed to start evaluation: ' + (data.error || 'Unknown error'));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showError('Failed to start evaluation: ' + error.message);
-            });
-        }
 
         function pollEvaluationStatus() {
             const statusText = document.getElementById('status-text');
-            let pollCount = 0;
             
             const pollInterval = setInterval(() => {
                 fetch(`/check_custom_status/{{ model_name }}`)
@@ -636,32 +667,37 @@
                     if (data.status === 'complete') {
                         clearInterval(pollInterval);
                         // Complete all stages
-                        for (let i = 1; i <= 5; i++) {
-                            document.getElementById(`stage-${i}`).classList.remove('active');
-                            document.getElementById(`stage-${i}`).classList.add('completed');
-                        }
+                        updateProgressStage(6);
                         statusText.textContent = 'Evaluation completed successfully!';
                         setTimeout(() => showResults(data.results), 1500);
                     } else if (data.status === 'error') {
                         clearInterval(pollInterval);
-                        showError('Evaluation failed: ' + (data.results?.error || 'Unknown error'));
+                        const errorMsg = data.results?.error || data.progress?.message || 'Unknown error';
+                        showError('Evaluation failed: ' + errorMsg);
                     } else if (data.status === 'processing') {
-                        // Progress through stages
-                        pollCount++;
-                        if (pollCount % 3 === 0 && currentStage < 5) {
-                            currentStage++;
-                            updateProgressStage(currentStage);
+                        // Update progress based on actual stage from backend
+                        if (data.progress && data.progress.stage) {
+                            const stage = data.progress.stage;
+                            const message = data.progress.message;
+                            
+                            console.log(`Updating to stage ${stage}: ${message}`);
+                            
+                            // Update current stage and visual progress
+                            if (stage !== currentStage && stage > 0) {
+                                currentStage = stage;
+                                updateProgressStage(currentStage);
+                            }
+                            
+                            // Update status text with actual message from backend
+                            statusText.textContent = message || stages[currentStage - 1] || 'Processing...';
                         }
-                        
-                        // Update status text with current stage
-                        const stageText = stages[currentStage - 1] || 'Processing...';
-                        statusText.textContent = stageText;
                     }
                 })
                 .catch(error => {
                     console.error('Status check error:', error);
+                    // Don't clear interval on network errors, just log them
                 });
-            }, 2000);
+            }, 1500); // Reduced polling interval for better responsiveness
         }
 
         function showResults(results) {

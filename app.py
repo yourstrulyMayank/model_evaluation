@@ -12,7 +12,7 @@ from collections import defaultdict
 from werkzeug.utils import secure_filename
 import uuid
 # Import your evaluation functions
-
+from custom_evaluate_llm import run_custom_evaluation, get_progress
 from evaluate_llm import get_history, run_evaluation, _save_enhanced_results 
 
 
@@ -165,7 +165,7 @@ def custom_llm(model_name):
 def run_custom_evaluation_route(model_name):
     try:
         # Import custom evaluator
-        from custom_evaluate_llm import run_custom_evaluation
+        
         
         # Get model path
         model_path = os.path.join(model_base_path, "llm", model_name)
@@ -206,18 +206,21 @@ def run_custom_evaluation_route(model_name):
         processing_status[f"{model_name}_custom"] = "error"
         return jsonify({'error': f'Error starting evaluation: {str(e)}'}), 500
 
-# Also update the check_custom_status function to provide more detailed status info
 @app.route('/check_custom_status/<model_name>')
 def check_custom_status(model_name):
     status_key = f"{model_name}_custom"
     status = processing_status.get(status_key, "not_started")
     results = custom_evaluation_results.get(model_name, {})
     
-    print(f"Status check for {model_name}: {status}")  # Debug log
+    # Get progress information from custom_evaluate_llm
+    progress_info = get_progress(model_name)
+    
+    print(f"Status check for {model_name}: {status}, Progress: {progress_info}")  # Debug log
     
     response_data = {
         "status": status,
         "results": results,
+        "progress": progress_info,
         "timestamp": datetime.now().isoformat()
     }
     

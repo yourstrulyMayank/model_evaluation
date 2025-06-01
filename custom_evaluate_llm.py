@@ -12,6 +12,11 @@ from rapidfuzz import fuzz, process
 import json
 from datetime import datetime
 import traceback
+import threading
+# Global progress tracker
+progress_tracker = {}
+progress_lock = threading.Lock()
+
 
 # Load models
 print("🔄 Loading Donut and SentenceTransformer models...")
@@ -22,6 +27,24 @@ embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 device = "cuda" if torch.cuda.is_available() else "cpu"
 donut_model.to(device)
 print(f"✅ Models loaded successfully on device: {device}")
+
+
+def update_progress(model_name, stage, message):
+    """Update progress for a specific model evaluation."""
+    with progress_lock:
+        if model_name not in progress_tracker:
+            progress_tracker[model_name] = {}
+        progress_tracker[model_name].update({
+            'stage': stage,
+            'message': message,
+            'timestamp': datetime.now().isoformat()
+        })
+    print(f"📊 Progress Update - {model_name}: Stage {stage} - {message}")
+
+def get_progress(model_name):
+    """Get current progress for a model."""
+    with progress_lock:
+        return progress_tracker.get(model_name, {'stage': 0, 'message': 'Not started'})
 
 
 def extract_answer_from_image(image: Image.Image, prompt: str) -> str:
@@ -275,6 +298,9 @@ def run_custom_evaluation(model_name, model_path, upload_dir):
     print(f"📁 Upload directory: {upload_dir}")
     
     try:
+        # Stage 1: Loading models and initializing
+        update_progress(model_name, 1, "Loading models and initializing...")
+        
         # Use fixed file paths instead of dynamic discovery
         image_file = os.path.join(upload_dir,'bank_2.png')
         transaction_file = os.path.join(upload_dir,'transaction details.xlsx')
@@ -292,13 +318,19 @@ def run_custom_evaluation(model_name, model_path, upload_dir):
         if missing_files:
             error_msg = f"Missing required files: {', '.join(missing_files)}"
             print(f"❌ {error_msg}")
+            update_progress(model_name, 1, f"Error: {error_msg}")
             return {
                 "error": error_msg,
                 "files_processed": 0,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         
+        # Stage 2: Processing uploaded files
+        update_progress(model_name, 2, "Processing uploaded files...")
         print("✅ All required files found, starting evaluation...")
+        
+        # Stage 3: Analyzing document content
+        update_progress(model_name, 3, "Analyzing document content...")
         
         # Run evaluation
         evaluation_df = evaluate_image_and_transactions(
@@ -307,7 +339,8 @@ def run_custom_evaluation(model_name, model_path, upload_dir):
             ground_truth_file
         )
         
-        # Rest of the function remains the same...
+        # Stage 4: Comparing with ground truth
+        update_progress(model_name, 4, "Comparing with ground truth...")
         print("📊 Processing evaluation results...")
         
         # Calculate summary statistics
@@ -324,6 +357,9 @@ def run_custom_evaluation(model_name, model_path, upload_dir):
         print(f"   Intermittent: {intermittent_count} ({intermittent_count/total_tests*100:.1f}%)")
         print(f"   Failed: {fail_count} ({fail_count/total_tests*100:.1f}%)")
         print(f"   Average Score: {avg_score:.1f}%")
+        
+        # Stage 5: Finalizing
+        update_progress(model_name, 5, "Finalizing evaluation...")
         
         # Convert DataFrame to list of dictionaries for JSON serialization
         ground_truth_comparison = []
@@ -362,22 +398,8 @@ def run_custom_evaluation(model_name, model_path, upload_dir):
             }
         }
         
-        # print("💾 Saving evaluation results...")
-        
-        # # Save detailed results to JSON file
-        # results_dir = "evaluation_results"
-        # os.makedirs(results_dir, exist_ok=True)
-        
-        # results_file = os.path.join(results_dir, f"{model_name}_custom_evaluation.json")
-        # with open(results_file, 'w') as f:
-        #     json.dump(results, f, indent=2)
-        
-        # print(f"✅ Results saved to: {results_file}")
-        
-        # # Also save the detailed DataFrame as CSV
-        # csv_file = os.path.join(results_dir, f"{model_name}_detailed_results.csv")
-        # evaluation_df.to_csv(csv_file, index=False)
-        # print(f"📊 Detailed results saved to: {csv_file}")
+        # Mark as completed
+        update_progress(model_name, 6, "Evaluation completed successfully!")
         
         print("🎉 Custom evaluation completed successfully!")
         return results
@@ -387,6 +409,8 @@ def run_custom_evaluation(model_name, model_path, upload_dir):
         print(f"❌ {error_msg}")
         print("🔍 Full traceback:")
         traceback.print_exc()
+        
+        update_progress(model_name, -1, f"Error: {error_msg}")
         
         return {
             "error": error_msg,
