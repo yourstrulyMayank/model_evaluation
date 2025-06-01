@@ -117,6 +117,105 @@ def run_evaluation_in_background(model_name, model_path, eval_params):
 
     threading.Thread(target=background_task).start()
 
+# Add this new route to your app.py file
+
+@app.route('/download_custom_excel/<model_name>')
+def download_custom_excel(model_name):
+    """Download custom evaluation results as Excel file."""
+    try:
+        # Get evaluation results
+        results = custom_evaluation_results.get(model_name, {})
+        
+        if not results or results.get('error'):
+            flash("No evaluation results found for this model.")
+            return redirect(url_for('custom_llm', model_name=model_name))
+        
+        # Import pandas for Excel creation
+        import pandas as pd
+        from io import BytesIO
+        
+        # Create Excel file in memory
+        output = BytesIO()
+        
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Main results sheet
+            if 'ground_truth_comparison' in results:
+                comparison_data = results['ground_truth_comparison']
+                
+                # Create DataFrame with original format plus model outputs
+                df_results = pd.DataFrame([
+                    {
+                        'Prompt': item['prompt'],
+                        'Ground_Truth_Actual': item['actual'],
+                        'Model_Extracted': item['extracted'],
+                        'Confidence_Score': item['score'],
+                        'Test_Grade': item['grade'],
+                        'Status': 'Pass' if item['grade'] == '✅ Pass' else 'Fail' if item['grade'] == '❌ Fail' else 'Intermittent'
+                    }
+                    for item in comparison_data
+                ])
+                
+                df_results.to_excel(writer, sheet_name='Evaluation_Results', index=False)
+            
+            # Summary sheet
+            summary_data = {
+                'Metric': [
+                    'Model Name',
+                    'Evaluation Date',
+                    'Total Tests',
+                    'Tests Passed',
+                    'Tests Failed', 
+                    'Intermittent Tests',
+                    'Overall Score (%)',
+                    'Success Rate (%)',
+                    'Average Score',
+                    'Highest Score',
+                    'Lowest Score',
+                    'Files Processed'
+                ],
+                'Value': [
+                    results.get('model_name', model_name),
+                    results.get('timestamp', 'N/A'),
+                    results.get('total_tests', 0),
+                    results.get('pass_count', 0),
+                    results.get('fail_count', 0),
+                    results.get('intermittent_count', 0),
+                    round(results.get('overall_score', 0), 2),
+                    round(results.get('success_rate', 0), 2),
+                    round(results.get('average_score', 0), 2),
+                    round(results.get('summary_statistics', {}).get('highest_score', 0), 2),
+                    round(results.get('summary_statistics', {}).get('lowest_score', 0), 2),
+                    results.get('files_processed', 0)
+                ]
+            }
+            
+            df_summary = pd.DataFrame(summary_data)
+            df_summary.to_excel(writer, sheet_name='Summary', index=False)
+            
+            # File info sheet
+            if 'file_info' in results:
+                file_info = results['file_info']
+                df_files = pd.DataFrame([
+                    {'File Type': 'Image File', 'File Name': file_info.get('image_file', 'N/A')},
+                    {'File Type': 'Transaction File', 'File Name': file_info.get('transaction_file', 'N/A')},
+                    {'File Type': 'Ground Truth File', 'File Name': file_info.get('ground_truth_file', 'N/A')}
+                ])
+                df_files.to_excel(writer, sheet_name='File_Info', index=False)
+        
+        output.seek(0)
+        
+        # Create response
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = f'attachment; filename="{model_name}_custom_evaluation_results.xlsx"'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error generating Excel file: {e}")
+        flash(f"Error generating Excel file: {str(e)}")
+        return redirect(url_for('custom_llm', model_name=model_name))
+        
 @app.route('/clear_custom_results/<model_name>', methods=['POST'])
 def clear_custom_results(model_name):
     """Clear custom evaluation results for a model."""

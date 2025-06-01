@@ -155,6 +155,35 @@
             flex-wrap: wrap;
             gap: 20px;
         }
+        .download-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+
+        .download-section h3 {
+            margin-top: 0;
+            color: #28a745;
+        }
+
+        .download-btn {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+            color: white;
+            text-decoration: none;
+        }
 
         .stage {
             display: flex;
@@ -204,7 +233,7 @@
         }
 
         .redo-btn {
-            background: linear-gradient(135deg, #ffc107, #ffb300);
+            background: linear-gradient(135deg, #ffb200, #ffb300);
             color: #212529;
             font-size: 16px;
             font-weight: 600;
@@ -634,6 +663,15 @@
                         </div>
                         {% endif %}
                     </div>
+                </div>
+
+                <!-- Download Section -->
+                <div class="download-section">
+                    <h3>📥 Download Results</h3>
+                    <p>Export your evaluation results to Excel format for further analysis</p>
+                    <a href="/download_custom_excel/{{ model_name }}" class="download-btn">
+                        📊 Download Excel Report
+                    </a>
                 </div>
 
                 {% endif %}
