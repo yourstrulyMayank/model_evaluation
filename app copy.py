@@ -9,18 +9,9 @@ import base64
 import os
 from datetime import datetime
 from collections import defaultdict
-from werkzeug.utils import secure_filename
-import uuid
 # Import your evaluation functions
 
 from evaluate_llm import get_history, run_evaluation, _save_enhanced_results 
-
-
-
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 # PDF generation
 try:
@@ -36,14 +27,6 @@ app.secret_key = 'your-secret-key-here'
 model_base_path = "models"
 processing_status = {}  # Track per-model status
 evaluation_progress = {}  # Track detailed progress
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf', 'xlsx', 'xls', 'csv'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-# Create upload directory
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-# Add this global variable with other globals
-custom_evaluation_results = {}  # Store custom evaluation results
 
 categories = {
     "llm": [],
@@ -146,82 +129,7 @@ def evaluate(category, model_name):
 
 @app.route('/custom_llm/<model_name>')
 def custom_llm(model_name):
-    # Get existing uploaded files for this model
-    model_upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
-    uploaded_files = []
-    if os.path.exists(model_upload_dir):
-        uploaded_files = [f for f in os.listdir(model_upload_dir) if os.path.isfile(os.path.join(model_upload_dir, f))]
-    
-    # Get evaluation results if available
-    results = custom_evaluation_results.get(model_name, {})
-    
-    return render_template('custom_llm.html', 
-                         model_name=model_name, 
-                         uploaded_files=uploaded_files,
-                         evaluation_results=results)
-
-
-@app.route('/run_custom_evaluation/<model_name>', methods=['POST'])
-def run_custom_evaluation_route(model_name):
-    try:
-        # Import custom evaluator
-        from custom_evaluate_llm import run_custom_evaluation
-        
-        # Get model path
-        model_path = os.path.join(model_base_path, "llm", model_name)
-        upload_dir = os.path.join(UPLOAD_FOLDER)
-        
-        if not os.path.exists(upload_dir):
-            return jsonify({'error': 'No files uploaded for evaluation'}), 400
-        
-        # Set processing status BEFORE starting background task
-        processing_status[f"{model_name}_custom"] = "processing"
-        
-        def background_evaluation():
-            try:
-                print(f"Starting custom evaluation for {model_name}")
-                # Run custom evaluation
-                results = run_custom_evaluation(model_name, model_path, upload_dir)
-                print(f"Custom evaluation completed for {model_name}")
-                
-                custom_evaluation_results[model_name] = results
-                processing_status[f"{model_name}_custom"] = "complete"
-                
-            except Exception as e:
-                print(f"Custom evaluation error for {model_name}: {e}")
-                import traceback
-                traceback.print_exc()
-                
-                processing_status[f"{model_name}_custom"] = "error"
-                custom_evaluation_results[model_name] = {"error": str(e)}
-        
-        # Run in background
-        threading.Thread(target=background_evaluation, daemon=True).start()
-        
-        # Return success response
-        return jsonify({'status': 'started', 'message': 'Evaluation started successfully'})
-        
-    except Exception as e:
-        print(f"Error starting evaluation: {e}")
-        processing_status[f"{model_name}_custom"] = "error"
-        return jsonify({'error': f'Error starting evaluation: {str(e)}'}), 500
-
-# Also update the check_custom_status function to provide more detailed status info
-@app.route('/check_custom_status/<model_name>')
-def check_custom_status(model_name):
-    status_key = f"{model_name}_custom"
-    status = processing_status.get(status_key, "not_started")
-    results = custom_evaluation_results.get(model_name, {})
-    
-    print(f"Status check for {model_name}: {status}")  # Debug log
-    
-    response_data = {
-        "status": status,
-        "results": results,
-        "timestamp": datetime.now().isoformat()
-    }
-    
-    return jsonify(response_data)
+    return render_template('custom_llm.html', model_name=model_name)
 
 @app.route('/evaluate_llm/<model_name>', methods=['POST','GET'])
 def evaluate_llm(model_name):
@@ -377,6 +285,25 @@ def extract_score_from_results(results):
     
     return None
 
+# @app.route('/results/<model_name>')
+# def analyze(model_name):
+#     """Enhanced results page with comprehensive metrics display."""
+#     try:
+#         # Load enhanced results
+#         history_file = "evaluation_results/history.json"
+#         if os.path.exists(history_file):
+#             with open(history_file, 'r') as f:
+#                 all_history = json.load(f)
+#             history_data = [entry for entry in all_history if model_name in entry["model_path"]]
+#         else:
+#             # Fallback to old format
+#             history_data = get_history(model_name)
+            
+#     except Exception as e:
+#         print(f"Error loading results: {e}")
+#         history_data = []
+    
+#     return render_template('results.html', model_name=model_name, history=history_data)
 
 @app.route('/results/<model_name>')
 def analyze(model_name):

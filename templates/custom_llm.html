@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Evaluation - {{ model_name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #f4f4f4;
+        }
+
+        header img {
+            height: 75px;
+        }
+
+        nav {
+            width: 100%;
+            text-align: left;
+            padding: 10px 20px;
+            background-color: #005bb5;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        nav a:hover {
+            background-color: #0071e3;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #0071e3;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #005bb5;
+            border-bottom: 2px solid #0071e3;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .eval-section {
+            text-align: center;
+            padding: 30px;
+            background-color: #f8f9ff;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .eval-btn {
+            background-color: #28a745;
+            color: white;
+            font-size: 18px;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .eval-btn:hover:not(:disabled) {
+            background-color: #218838;
+        }
+
+        .eval-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .status-section {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            background-color: #fff3cd;
+            border-radius: 10px;
+            border: 1px solid #ffeaa7;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0071e3;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-text {
+            font-size: 18px;
+            font-weight: 500;
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .status-detail {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .overall-score {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .score-label {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #0071e3;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .grade-distribution {
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .grade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .grade-pass {
+            background-color: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .grade-intermittent {
+            background-color: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+
+        .grade-fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .completion-info {
+            background-color: #e8f5e8;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #28a745;
+        }
+
+        .completion-info h3 {
+            margin-top: 0;
+            color: #155724;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .info-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #0071e3;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="/static/infosys.png" alt="Logo">
+        <h1>Custom Model Evaluation</h1>
+        <img src="/static/ABCBank.png" alt="Logo">
+    </header>
+
+    <nav>
+        <a href="/">← Back to Dashboard</a>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h1>Custom Evaluation for {{ model_name }}</h1>
+
+            <!-- Evaluation Start Section -->
+            <div class="eval-section" id="eval-section">
+                <h2>🚀 Ready to Evaluate</h2>
+                <p>This evaluation will process files from the uploads folder and analyze the model's performance on document understanding and transaction analysis tasks.</p>
+                <button class="eval-btn" id="startEvalBtn" onclick="startCustomEvaluation()">
+                    Start Custom Evaluation
+                </button>
+            </div>
+
+            <!-- Status Section -->
+            <div class="status-section" id="status-section">
+                <div class="spinner"></div>
+                <div class="status-text" id="status-text">Initializing evaluation...</div>
+                <div class="status-detail">This may take several minutes depending on the number of files and their complexity.</div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="results-section">
+                {% if evaluation_results %}
+                
+                {% if evaluation_results.get('error') %}
+                <div class="alert alert-danger">
+                    <strong>❌ Evaluation Error:</strong> {{ evaluation_results.error }}
+                </div>
+                {% else %}
+                
+                <!-- Overall Score Summary -->
+                {% if evaluation_results.get('overall_score') is not none %}
+                <div class="summary-card">
+                    <div class="overall-score">{{ "%.1f"|format(evaluation_results.overall_score) }}%</div>
+                    <div class="score-label">Overall Performance Score</div>
+                </div>
+                {% endif %}
+
+                <!-- Key Metrics -->
+                {% if evaluation_results.get('ground_truth_comparison') %}
+                {% set comparison = evaluation_results.ground_truth_comparison %}
+                {% set total_tests = comparison|length %}
+                {% set pass_count = comparison|selectattr('grade', 'equalto', '✅ Pass')|list|length %}
+                {% set intermittent_count = comparison|selectattr('grade', 'equalto', '⚠ Intermittent')|list|length %}
+                {% set fail_count = comparison|selectattr('grade', 'equalto', '❌ Fail')|list|length %}
+                {% set avg_score = (comparison|map(attribute='score')|sum / total_tests)|round(1) %}
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">{{ total_tests }}</div>
+                        <div class="metric-label">Total Tests</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">{{ avg_score }}%</div>
+                        <div class="metric-label">Average Score</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">{{ pass_count }}</div>
+                        <div class="metric-label">Tests Passed</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">{{ "%.1f"|format((pass_count / total_tests * 100)) }}%</div>
+                        <div class="metric-label">Success Rate</div>
+                    </div>
+                </div>
+
+                <!-- Grade Distribution -->
+                <div class="grade-distribution">
+                    <h3>📊 Performance Breakdown</h3>
+                    <div class="grade-item grade-pass">
+                        <span>✅ Passed Tests</span>
+                        <span>{{ pass_count }} / {{ total_tests }} ({{ "%.1f"|format((pass_count / total_tests * 100)) }}%)</span>
+                    </div>
+                    <div class="grade-item grade-intermittent">
+                        <span>⚠️ Intermittent Tests</span>
+                        <span>{{ intermittent_count }} / {{ total_tests }} ({{ "%.1f"|format((intermittent_count / total_tests * 100)) }}%)</span>
+                    </div>
+                    <div class="grade-item grade-fail">
+                        <span>❌ Failed Tests</span>
+                        <span>{{ fail_count }} / {{ total_tests }} ({{ "%.1f"|format((fail_count / total_tests * 100)) }}%)</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Completion Information -->
+                <div class="completion-info">
+                    <h3>✅ Evaluation Complete</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-value">{{ evaluation_results.get('files_processed', 0) }}</div>
+                            <div class="info-label">Files Processed</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-value">{{ evaluation_results.get('timestamp', 'N/A') }}</div>
+                            <div class="info-label">Completed At</div>
+                        </div>
+                        {% if evaluation_results.get('document_analysis') %}
+                        <div class="info-item">
+                            <div class="info-value">{{ evaluation_results.document_analysis|length }}</div>
+                            <div class="info-label">Documents Analyzed</div>
+                        </div>
+                        {% endif %}
+                        {% if evaluation_results.get('transaction_analysis') %}
+                        <div class="info-item">
+                            <div class="info-value">{{ evaluation_results.transaction_analysis|length }}</div>
+                            <div class="info-label">Transaction Files</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom evaluation handling
+        function startCustomEvaluation() {
+            const startBtn = document.getElementById('startEvalBtn');
+            const statusSection = document.getElementById('status-section');
+            const evalSection = document.getElementById('eval-section');
+            
+            // Disable button and show status
+            startBtn.disabled = true;
+            startBtn.textContent = 'Processing...';
+            statusSection.style.display = 'block';
+            evalSection.style.display = 'none';
+
+            // Start evaluation
+            fetch(`/run_custom_evaluation/{{ model_name }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'started') {
+                    // Start polling for status
+                    pollEvaluationStatus();
+                } else {
+                    showError('Failed to start evaluation: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Failed to start evaluation: ' + error.message);
+            });
+        }
+
+        function pollEvaluationStatus() {
+            const statusText = document.getElementById('status-text');
+            let dots = 0;
+            
+            const pollInterval = setInterval(() => {
+                fetch(`/check_custom_status/{{ model_name }}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Status check:', data);
+                    
+                    if (data.status === 'complete') {
+                        clearInterval(pollInterval);
+                        showResults(data.results);
+                    } else if (data.status === 'error') {
+                        clearInterval(pollInterval);
+                        showError('Evaluation failed: ' + (data.results?.error || 'Unknown error'));
+                    } else if (data.status === 'processing') {
+                        // Animate status text
+                        dots = (dots + 1) % 4;
+                        statusText.textContent = 'Processing files and running evaluation' + '.'.repeat(dots);
+                    }
+                })
+                .catch(error => {
+                    console.error('Status check error:', error);
+                });
+            }, 2000); // Check every 2 seconds
+        }
+
+        function showResults(results) {
+            const statusSection = document.getElementById('status-section');
+            
+            statusSection.style.display = 'none';
+            
+            if (results && !results.error) {
+                // Reload the page to show results
+                location.reload();
+            } else {
+                showError('Evaluation completed but no results available: ' + (results?.error || 'Unknown error'));
+            }
+        }
+
+        function showError(message) {
+            const statusSection = document.getElementById('status-section');
+            const startBtn = document.getElementById('startEvalBtn');
+            const evalSection = document.getElementById('eval-section');
+            
+            statusSection.style.display = 'none';
+            evalSection.style.display = 'block';
+            startBtn.disabled = false;
+            startBtn.textContent = 'Start Custom Evaluation';
+            
+            // Show error message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger';
+            alertDiv.innerHTML = '<strong>❌ Error:</strong> ' + message;
+            
+            const container = document.querySelector('.container .card');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Remove error message after 10 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 10000);
+        }
+
+        // Show results if they exist
+        {% if evaluation_results and not evaluation_results.get('error') %}
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('eval-section').style.display = 'none';
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

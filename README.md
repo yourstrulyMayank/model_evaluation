@@ -26,3 +26,9 @@ snapshot_download( repo_id = "google/flan-t5-base", local_dir="models/llm/flan-t
 snapshot_download( repo_id = "google/flan-t5-small", local_dir="models/llm/flan-t5-small")
 snapshot_download( repo_id = "ministral/Ministral-3b-instruct", local_dir="models/llm/Ministral-3b-instruct")
 snapshot_download( repo_id = "HuggingFaceTB/SmolLM2-135M", local_dir="models/llm/SmolLM2-135M")
+snapshot_download( repo_id = "naver-clova-ix/donut-base-finetuned-docvqa", local_dir="models/donut-base-finetuned-docvqa")
+
+
+from sentence_transformers.util import snapshot_download
+
+snapshot_download("sentence-transformers/all-MiniLM-L6-v2", local_dir="models/all-MiniLM-L6-v2")
