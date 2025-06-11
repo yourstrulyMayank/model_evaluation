@@ -58,7 +58,7 @@ def extract_answer_from_image(image: Image.Image, prompt: str) -> str:
     print(f"📄 Processing prompt: {prompt}")
     image = image.convert("RGB")
     pixel_values = processor(image, return_tensors="pt").pixel_values.to(device)
-    task_prompt = f"<s_docvqa><s_question>{prompt}</s_question></s_answer>"
+    task_prompt = f"<s_docvqa><s_question>{prompt}</s_question><s_answer>"
     decoder_input_ids = processor.tokenizer(task_prompt, add_special_tokens=False, return_tensors="pt").input_ids.to(device)
     outputs = donut_model.generate(
         pixel_values,
