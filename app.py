@@ -53,21 +53,61 @@ categories = {
 }
 
 # Create folders
-for category, model_list in categories.items():
-    category_path = os.path.join(model_base_path, category)
-    os.makedirs(category_path, exist_ok=True)
+def create_model_directories():
+    """Create model directories with subcategory support."""
+    categories = {
+        "llm": [],
+        "genai": [],
+        "dl": ["computer_vision", "nlp", "others"],
+        "ml": ["regression", "classification", "clustering", "others"]
+    }
 
-    for model_name in model_list:
-        model_path = os.path.join(category_path, model_name)
-        os.makedirs(model_path, exist_ok=True)
-        print(f"Created: {model_path}")
+    # Create folders
+    for category, subcategories in categories.items():
+        category_path = os.path.join(model_base_path, category)
+        os.makedirs(category_path, exist_ok=True)
+        
+        # If subcategories exist, create them
+        if isinstance(subcategories, list) and subcategories:
+            for subcategory in subcategories:
+                subcategory_path = os.path.join(category_path, subcategory)
+                os.makedirs(subcategory_path, exist_ok=True)
+                print(f"Created: {subcategory_path}")
+create_model_directories()
+
+js_function = '''
+<script>
+function setBenchmark(type, index) {
+    const dropdown = document.getElementById('benchmark-' + type + '-' + index);
+    const hiddenInput = document.getElementById('benchmark-input-' + type + '-' + index);
+    if (dropdown && hiddenInput) {
+        hiddenInput.value = dropdown.value;
+    }
+}
+</script>
+'''
+LLM_BENCHMARKS = [
+    "BIG-Bench", "MMLU", "HellaSwag", "PIQA", "SocialIQA", "BooIQ", "WinoGrande",
+    "CommonsenseQA", "OpenBookQA", "ARC-e", "ARC-c", "TriviaQA", "Natural Questions",
+    "HumanEval", "MBPP", "GSM8K", "MATH", "AGIEval"
+]
+
+ML_BENCHMARKS = [
+    "scikit-learn", "Yellowbrick", "Evidently AI", "MLflow", "Weights & Biases", "AutoML (TPOT, H2O)"
+]
+
+DL_BENCHMARKS = []  # Add DL benchmarks if needed
+
+GENAI_BENCHMARKS = LLM_BENCHMARKS
+
 
 @app.route('/')
 def index():
+    """Updated index route to handle subcategories for ML and DL models."""
     categories = {
         "LLMs": "llm",
         "Other GenAI Models": "genai",
-        "DL Models": "dl",
+        "DL Models": "dl", 
         "ML Models": "ml"
     }
 
@@ -76,12 +116,162 @@ def index():
     for display_name, folder in categories.items():
         path = os.path.join(model_base_path, folder)
         if os.path.exists(path):
-            models = [model for model in os.listdir(path) if os.path.isdir(os.path.join(path, model))]
-            model_data[display_name] = models
+            if display_name == "ML Models":
+                # Handle ML Models with subcategories
+                model_data[display_name] = {
+                    "regression": [],
+                    "classification": [],
+                    "clustering": [],
+                    "others": []
+                }
+                # Check for subcategory folders or categorize models
+                for item in os.listdir(path):
+                    item_path = os.path.join(path, item)
+                    if os.path.isdir(item_path):
+                        # Check if it's a subcategory folder
+                        if item in ["regression", "classification", "clustering", "others"]:
+                            models = [model for model in os.listdir(item_path) 
+                                    if os.path.isdir(os.path.join(item_path, model))]
+                            model_data[display_name][item] = models
+                        else:
+                            # Default to 'others' if not categorized
+                            model_data[display_name]["others"].append(item)
+                            
+            elif display_name == "DL Models":
+                # Handle DL Models with subcategories
+                model_data[display_name] = {
+                    "computer_vision": [],
+                    "nlp": [],
+                    "others": []
+                }
+                # Check for subcategory folders or categorize models
+                for item in os.listdir(path):
+                    item_path = os.path.join(path, item)
+                    if os.path.isdir(item_path):
+                        # Check if it's a subcategory folder
+                        if item in ["computer_vision", "nlp", "others"]:
+                            models = [model for model in os.listdir(item_path) 
+                                    if os.path.isdir(os.path.join(item_path, model))]
+                            model_data[display_name][item] = models
+                        else:
+                            # Default to 'others' if not categorized
+                            model_data[display_name]["others"].append(item)
+            else:
+                # Handle LLMs and GenAI as before (flat structure)
+                models = [model for model in os.listdir(path) 
+                         if os.path.isdir(os.path.join(path, model))]
+                model_data[display_name] = models
         else:
-            model_data[display_name] = []
+            if display_name in ["ML Models", "DL Models"]:
+                model_data[display_name] = {
+                    "regression": [] if display_name == "ML Models" else [],
+                    "classification": [] if display_name == "ML Models" else [],
+                    "clustering": [] if display_name == "ML Models" else [],
+                    "computer_vision": [] if display_name == "DL Models" else [],
+                    "nlp": [] if display_name == "DL Models" else [],
+                    "others": []
+                }
+            else:
+                model_data[display_name] = []
 
-    return render_template("index.html", model_data=model_data)
+    return render_template("index.html", model_data=model_data,    llm_benchmarks=LLM_BENCHMARKS,
+        ml_benchmarks=ML_BENCHMARKS,
+        dl_benchmarks=DL_BENCHMARKS,
+        genai_benchmarks=GENAI_BENCHMARKS)
+
+@app.route('/evaluate_ml/<model_name>/<subcategory>', methods=['POST'])
+def evaluate_ml(model_name, subcategory):
+    """Evaluate ML models with subcategory support."""
+    benchmark = request.form.get('benchmark', 'scikit-learn')
+    
+    print(f"Evaluating ML model {model_name} (subcategory: {subcategory}) on benchmark: {benchmark}")
+    
+    # For now, show not supported message
+    flash(f"ML model evaluation for {benchmark} is not yet implemented.")
+    return redirect(url_for('index'))
+
+@app.route('/evaluate_dl/<model_name>/<subcategory>', methods=['POST'])
+def evaluate_dl(model_name, subcategory):
+    """Evaluate DL models with subcategory support."""
+    benchmark = request.form.get('benchmark', '')
+    
+    print(f"Evaluating DL model {model_name} (subcategory: {subcategory}) on benchmark: {benchmark}")
+    
+    # For now, show not supported message
+    flash(f"DL model evaluation is not yet implemented.")
+    return redirect(url_for('index'))
+
+@app.route('/evaluate_genai/<model_name>', methods=['POST'])
+def evaluate_genai(model_name):
+    """Evaluate GenAI models."""
+    benchmark = request.form.get('benchmark', 'BIG-Bench')
+    
+    print(f"Evaluating GenAI model {model_name} on benchmark: {benchmark}")
+    
+    if benchmark != "BIG-Bench":
+        flash(f"Evaluation for {benchmark} is not yet supported.")
+        return redirect(url_for('index'))
+
+    model_path = os.path.join(model_base_path, "genai", model_name)
+    if not os.path.exists(model_path):
+        flash(f"Model '{model_name}' not found.")
+        return redirect(url_for('index'))
+
+    eval_params = {
+        'num_examples': 25,
+        'max_tokens': 128,
+        'full_benchmark': False
+    }
+    
+    run_evaluation_in_background(model_name, model_path, eval_params)
+    return render_template('loading.html', model_name=model_name)
+
+@app.route('/custom_ml/<model_name>/<subcategory>')
+def custom_ml(model_name, subcategory):
+    """Custom evaluation page for ML models."""
+    # Get existing uploaded files for this model
+    model_upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
+    uploaded_files = []
+    if os.path.exists(model_upload_dir):
+        uploaded_files = [f for f in os.listdir(model_upload_dir) 
+                         if os.path.isfile(os.path.join(model_upload_dir, f))]
+    
+    # For now, redirect to a generic custom evaluation page
+    flash(f"Custom evaluation for ML models ({subcategory}) is not yet implemented.")
+    return redirect(url_for('index'))
+
+@app.route('/custom_dl/<model_name>/<subcategory>')
+def custom_dl(model_name, subcategory):
+    """Custom evaluation page for DL models."""
+    # Get existing uploaded files for this model
+    model_upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
+    uploaded_files = []
+    if os.path.exists(model_upload_dir):
+        uploaded_files = [f for f in os.listdir(model_upload_dir) 
+                         if os.path.isfile(os.path.join(model_upload_dir, f))]
+    
+    # For now, redirect to a generic custom evaluation page
+    flash(f"Custom evaluation for DL models ({subcategory}) is not yet implemented.")
+    return redirect(url_for('index'))
+
+@app.route('/custom_genai/<model_name>')
+def custom_genai(model_name):
+    """Custom evaluation page for GenAI models."""
+    # Get existing uploaded files for this model
+    model_upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
+    uploaded_files = []
+    if os.path.exists(model_upload_dir):
+        uploaded_files = [f for f in os.listdir(model_upload_dir) 
+                         if os.path.isfile(os.path.join(model_upload_dir, f))]
+    
+    # Get evaluation results if available
+    results = custom_evaluation_results.get(model_name, {})
+    
+    return render_template('custom_llm.html', 
+                         model_name=model_name, 
+                         uploaded_files=uploaded_files,
+                         evaluation_results=results,
+                         model_type='genai')
 
 def run_evaluation_in_background(model_name, model_path, eval_params):
     """Enhanced background evaluation with progress tracking."""
@@ -117,7 +307,7 @@ def run_evaluation_in_background(model_name, model_path, eval_params):
 
     threading.Thread(target=background_task).start()
 
-# Add this new route to your app.py file
+
 
 @app.route('/download_custom_excel/<model_name>')
 def download_custom_excel(model_name):

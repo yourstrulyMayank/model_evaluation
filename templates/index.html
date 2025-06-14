@@ -54,22 +54,30 @@
 
         .categories-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
+            grid-template-columns: 1.2fr 1.6fr 1.6fr 1.2fr; /* LLM, ML, DL, GenAI */
+            gap: 24px;
             padding: 40px;
         }
-
         .category-card {
             background-color: white;
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
-
+        /* Make ML and DL cards span more columns for extra width */
+        .category-card.ml, .category-card.dl {
+            grid-column: span 1;
+            min-width: 0;
+        }
         .category-card h2 {
             color: #0071e3;
             margin-bottom: 15px;
             font-size: 22px;
+            text-align: center;
         }
 
         .model {
@@ -141,9 +149,98 @@
             color: #1d1d1f;
             }
             .dashed-line {
-            width: 80%; /* or 100%, or a fixed value */
+            width: 80%;
             border-top: 1px dashed #aaa;
-            margin: 20px auto; /* centers it horizontally */
+            margin: 20px auto;
+            }
+
+            .subcategory-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 15px;
+                margin-top: 20px;
+            }
+
+            .subcategory-section {
+                background-color: #f9f9f9;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 15px;
+            }
+
+            .subcategory-section h3 {
+                color: #005bb5;
+                margin-bottom: 10px;
+                font-size: 16px;
+                text-align: center;
+            }
+
+            .dl-subcategory-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
+                margin-top: 20px;
+            }
+            .tabs {
+                display: flex;
+                border-bottom: 2px solid #e0e0e0;
+                margin-bottom: 16px;
+                margin-top: 6px;
+                justify-content: center;
+            }
+            .tab {
+                padding: 7px 16px;
+                cursor: pointer;
+                border: none;
+                border-radius: 10px 10px 0 0;
+                margin-right: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                outline: none;
+                min-width: 90px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+                transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+                position: relative;
+                top: 2px;
+            }
+            /* ML Tabs: Regression, Classification, Clustering, Others */
+            #ml-tab-regression { background: linear-gradient(90deg, #e3f0ff 0%, #b3d8fd 100%); color: #005bb5; }
+            #ml-tab-classification { background: linear-gradient(90deg, #fbefff 0%, #e3b3fd 100%); color: #6b0ba3; }
+            #ml-tab-clustering { background: linear-gradient(90deg, #eafff3 0%, #b3fdd1 100%); color: #008060; }
+            #ml-tab-others { background: linear-gradient(90deg, #fffbe3 0%, #fdf3b3 100%); color: #b58c00; }
+            /* DL Tabs: NLP, Computer Vision, Others */
+            #dl-tab-nlp { background: linear-gradient(90deg, #e3f7ff 0%, #b3eafd 100%); color: #0071e3; }
+            #dl-tab-computer_vision { background: linear-gradient(90deg, #ffe3f7 0%, #fdb3e9 100%); color: #b5007a; }
+            #dl-tab-others { background: linear-gradient(90deg, #f3ffe3 0%, #d6fdb3 100%); color: #5bb500; }
+            /* Active/hover state for all tabs */
+            .tab.active, .tab:hover {
+                background: linear-gradient(180deg, #fff 60%, #e4ecf7 100%);
+                color: #6b0ba3 !important;
+                box-shadow: 0 4px 16px rgba(107,11,163,0.08);
+                border-bottom: 2px solid #fff;
+                z-index: 2;
+            }
+            .tab-content {
+                display: none;
+                animation: fadeIn 0.3s;
+            }
+            .tab-content.active {
+                display: block;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            /* Responsive: stack on small screens */
+            @media (max-width: 1200px) {
+                .categories-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+            @media (max-width: 700px) {
+                .categories-grid {
+                    grid-template-columns: 1fr;
+                }
             }
     </style>
 </head>
@@ -159,66 +256,322 @@
     </nav>
 
     <div class="categories-grid">
-        {% for category, models in model_data.items() %}
+        <!-- LLMs Section -->
+        {% if model_data.get("LLMs") %}
         <div class="category-card">
-            <h2>{{ category }}</h2>
-            {% if models %}
-                {% for model in models %}
-                <div class="model">
-                    <div>{{ model }}</div>
-                        <select id="benchmark-{{ loop.index }}" class="apple-dropdown">
-                            <option value="BIG-Bench">BIG-Bench</option>
-                            <option value="MMLU">MMLU</option>
-                            <option value="HellaSwag">HellaSwag</option>
-                            <option value="PIQA">PIQA</option>
-                            <option value="SocialIQA">SocialIQA</option>
-                            <option value="BooIQ">BooIQ</option>
-                            <option value="WinoGrande">WinoGrande</option>
-                            <option value="CommonsenseQA">CommonsenseQA</option>
-                            <option value="OpenBookQA">OpenBookQA</option>
-                            <option value="ARC-e">ARC-e</option>
-                            <option value="ARC-c">ARC-c</option>
-                            <option value="TriviaQA">TriviaQA</option>
-                            <option value="Natural Questions">Natural Questions</option>
-                            <option value="HumanEval">HumanEval</option>
-                            <option value="MBPP">MBPP</option>
-                            <option value="GSM8K">GSM8K</option>
-                            <option value="MATH">MATH</option>
-                            <option value="AGIEval">AGIEval</option>
-                        </select>
-                    <div class="buttons">
-                        <!-- <form method="GET" action="{{ url_for('evaluate', category=category, model_name=model ) }}" style="display:inline;">
-                            <button class="eval-btn" type="submit">Evaluate</button>
-                        </form> -->
-                        <form action="{{ url_for('evaluate_llm', model_name=model) }}" method="post">
-                            <input type="hidden" name="benchmark" id="benchmark-input-{{ loop.index }}">
-                            <button class="eval-btn" type="submit" onclick="setBenchmark({{ loop.index }})">Evaluate</button>
-                        </form>
-                        <form method="GET" action="{{ url_for('history', category=category, model_name=model) }}" style="display:inline;">
-                            <button class="history-btn" type="submit">History</button>
-                        </form>
-                        <!-- Custom Evaluation Button -->
-                        <form action="{{ url_for('custom_llm', model_name=model) }}" method="get">
-                            <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
-                        </form>
+            <h2>LLMs</h2>
+            {% for model in model_data["LLMs"] %}
+            <div class="model">
+                <div>{{ model }}</div>
+                <select id="benchmark-llm-{{ loop.index }}" class="apple-dropdown">
+                    {% for option in llm_benchmarks %}
+                    <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+                <div class="buttons">
+                    <form action="{{ url_for('evaluate_llm', model_name=model) }}" method="post">
+                        <input type="hidden" name="benchmark" id="benchmark-input-llm-{{ loop.index }}">
+                        <button class="eval-btn" type="submit" onclick="setBenchmark('llm', {{ loop.index }})">Evaluate</button>
+                    </form>
+                    <form method="GET" action="{{ url_for('history', category='LLMs', model_name=model) }}" style="display:inline;">
+                        <button class="history-btn" type="submit">History</button>
+                    </form>
+                    <form action="{{ url_for('custom_llm', model_name=model) }}" method="get">
+                        <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
+                    </form>
+                </div>
+            </div>
+            <div class="dashed-line"></div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
+        <!-- ML Models Section -->
+            {% if model_data.get("ML Models") %}
+            <div class="category-card ml">
+                <h2>ML Models</h2>
+                <div class="tabs" id="ml-tabs">
+                    <button class="tab" onclick="showMLTab('regression')" id="ml-tab-regression">Regression</button>
+                    <button class="tab" onclick="showMLTab('classification')" id="ml-tab-classification">Classification</button>
+                    <button class="tab" onclick="showMLTab('clustering')" id="ml-tab-clustering">Clustering</button>
+                    <button class="tab" onclick="showMLTab('others')" id="ml-tab-others">Others</button>
+                </div>
+                <div class="tab-content" id="ml-content-regression">
+                    {% for model in model_data["ML Models"].get("regression", []) %}
+                    <div class="model">
+                        <div>{{ model }}</div>
+                        <select id="benchmark-ml-regression-{{ loop.index }}" class="apple-dropdown">
+                            {% for option in ml_benchmarks %}
+                            <option value="{{ option }}">{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="buttons">
+                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='regression') }}" method="post">
+                                <input type="hidden" name="benchmark" id="benchmark-input-ml-regression-{{ loop.index }}">
+                                <button class="eval-btn" type="submit" onclick="setBenchmark('ml-regression', {{ loop.index }})">Evaluate</button>
+                            </form>
+                            <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
+                                <button class="history-btn" type="submit">History</button>
+                            </form>
+                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='regression') }}" method="get">
+                                <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
+                            </form>
+                        </div>
                     </div>
+                    <div class="dashed-line"></div>
+                    {% endfor %}
+                    {% if not model_data["ML Models"].get("regression") %}
+                    <p><em>No regression models found.</em></p>
+                    {% endif %}
+                </div>
+                <div class="tab-content" id="ml-content-classification">
+                    {% for model in model_data["ML Models"].get("classification", []) %}
+                    <div class="model">
+                        <div>{{ model }}</div>
+                        <select id="benchmark-ml-classification-{{ loop.index }}" class="apple-dropdown">
+                            {% for option in ml_benchmarks %}
+                            <option value="{{ option }}">{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="buttons">
+                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='classification') }}" method="post">
+                                <input type="hidden" name="benchmark" id="benchmark-input-ml-classification-{{ loop.index }}">
+                                <button class="eval-btn" type="submit" onclick="setBenchmark('ml-classification', {{ loop.index }})">Evaluate</button>
+                            </form>
+                            <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
+                                <button class="history-btn" type="submit">History</button>
+                            </form>
+                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='classification') }}" method="get">
+                                <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="dashed-line"></div>
+                    {% endfor %}
+                    {% if not model_data["ML Models"].get("classification") %}
+                    <p><em>No classification models found.</em></p>
+                    {% endif %}
                 </div>
                 
-                <div class="dashed-line"></div>
-                {% endfor %}
-            {% else %}
-                <p><em>No models found.</em></p>
+                <div class="tab-content" id="ml-content-clustering">
+                    {% for model in model_data["ML Models"].get("clustering", []) %}
+                    <div class="model">
+                        <div>{{ model }}</div>
+                        <select id="benchmark-ml-clustering-{{ loop.index }}" class="apple-dropdown">
+                            {% for option in ml_benchmarks %}
+                            <option value="{{ option }}">{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="buttons">
+                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='clustering') }}" method="post">
+                                <input type="hidden" name="benchmark" id="benchmark-input-ml-clustering-{{ loop.index }}">
+                                <button class="eval-btn" type="submit" onclick="setBenchmark('ml-clustering', {{ loop.index }})">Evaluate</button>
+                            </form>
+                            <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
+                                <button class="history-btn" type="submit">History</button>
+                            </form>
+                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='clustering') }}" method="get">
+                                <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="dashed-line"></div>
+                    {% endfor %}
+                    {% if not model_data["ML Models"].get("clustering") %}
+                    <p><em>No clustering models found.</em></p>
+                    {% endif %}
+                </div>
+                <div class="tab-content" id="ml-content-others">
+                    {% for model in model_data["ML Models"].get("others", []) %}
+                    <div class="model">
+                        <div>{{ model }}</div>
+                        <select id="benchmark-ml-others-{{ loop.index }}" class="apple-dropdown">
+                            {% for option in ml_benchmarks %}
+                            <option value="{{ option }}">{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="buttons">
+                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='others') }}" method="post">
+                                <input type="hidden" name="benchmark" id="benchmark-input-ml-others-{{ loop.index }}">
+                                <button class="eval-btn" type="submit" onclick="setBenchmark('ml-others', {{ loop.index }})">Evaluate</button>
+                            </form>
+                            <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
+                                <button class="history-btn" type="submit">History</button>
+                            </form>
+                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='others') }}" method="get">
+                                <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="dashed-line"></div>
+                    {% endfor %}
+                    {% if not model_data["ML Models"].get("others") %}
+                    <p><em>No other ML models found.</em></p>
+                    {% endif %}
+                </div>
+            </div>
             {% endif %}
+
+            <!-- DL Models Section -->
+            {% if model_data.get("DL Models") %}
+            <div class="category-card dl">
+                <h2>DL Models</h2>
+                <div class="tabs" id="dl-tabs">
+                    <button class="tab" onclick="showDLTab('nlp')" id="dl-tab-nlp">NLP</button>
+                    <button class="tab" onclick="showDLTab('computer_vision')" id="dl-tab-computer_vision">Computer Vision</button>
+                    <button class="tab" onclick="showDLTab('others')" id="dl-tab-others">Others</button>
+                </div>
+                <div class="tab-content" id="dl-content-nlp">
+                    {% for model in model_data["DL Models"].get("nlp", []) %}
+                    <div class="model">
+                        <div>{{ model }}</div>
+                        <select id="benchmark-dl-nlp-{{ loop.index }}" class="apple-dropdown">
+                            {% for option in dl_benchmarks %}
+                            <option value="{{ option }}">{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="buttons">
+                            <form action="{{ url_for('evaluate_dl', model_name=model, subcategory='nlp') }}" method="post">
+                                <input type="hidden" name="benchmark" id="benchmark-input-dl-nlp-{{ loop.index }}">
+                                <button class="eval-btn" type="submit" onclick="setBenchmark('dl-nlp', {{ loop.index }})">Evaluate</button>
+                            </form>
+                            <form method="GET" action="{{ url_for('history', category='DL Models', model_name=model) }}" style="display:inline;">
+                                <button class="history-btn" type="submit">History</button>
+                            </form>
+                            <form action="{{ url_for('custom_dl', model_name=model, subcategory='nlp') }}" method="get">
+                                <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="dashed-line"></div>
+                    {% endfor %}
+                    {% if not model_data["DL Models"].get("nlp") %}
+                    <p><em>No NLP models found.</em></p>
+                    {% endif %}
+                </div>
+                <div class="tab-content" id="dl-content-computer_vision">
+                    {% for model in model_data["DL Models"].get("computer_vision", []) %}
+                    <div class="model">
+                        <div>{{ model }}</div>
+                        <select id="benchmark-dl-cv-{{ loop.index }}" class="apple-dropdown">
+                            {% for option in dl_benchmarks %}
+                            <option value="{{ option }}">{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="buttons">
+                            <form action="{{ url_for('evaluate_dl', model_name=model, subcategory='computer_vision') }}" method="post">
+                                <input type="hidden" name="benchmark" id="benchmark-input-dl-cv-{{ loop.index }}">
+                                <button class="eval-btn" type="submit" onclick="setBenchmark('dl-cv', {{ loop.index }})">Evaluate</button>
+                            </form>
+                            <form method="GET" action="{{ url_for('history', category='DL Models', model_name=model) }}" style="display:inline;">
+                                <button class="history-btn" type="submit">History</button>
+                            </form>
+                            <form action="{{ url_for('custom_dl', model_name=model, subcategory='computer_vision') }}" method="get">
+                                <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="dashed-line"></div>
+                    {% endfor %}
+                    {% if not model_data["DL Models"].get("computer_vision") %}
+                    <p><em>No computer vision models found.</em></p>
+                    {% endif %}
+                </div>
+                <div class="tab-content" id="dl-content-others">
+                    {% for model in model_data["DL Models"].get("others", []) %}
+                    <div class="model">
+                        <div>{{ model }}</div>
+                        <select id="benchmark-dl-others-{{ loop.index }}" class="apple-dropdown">
+                            {% for option in dl_benchmarks %}
+                            <option value="{{ option }}">{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="buttons">
+                            <form action="{{ url_for('evaluate_dl', model_name=model, subcategory='others') }}" method="post">
+                                <input type="hidden" name="benchmark" id="benchmark-input-dl-others-{{ loop.index }}">
+                                <button class="eval-btn" type="submit" onclick="setBenchmark('dl-others', {{ loop.index }})">Evaluate</button>
+                            </form>
+                            <form method="GET" action="{{ url_for('history', category='DL Models', model_name=model) }}" style="display:inline;">
+                                <button class="history-btn" type="submit">History</button>
+                            </form>
+                            <form action="{{ url_for('custom_dl', model_name=model, subcategory='others') }}" method="get">
+                                <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="dashed-line"></div>
+                    {% endfor %}
+                    {% if not model_data["DL Models"].get("others") %}
+                    <p><em>No other DL models found.</em></p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+        <!-- Other GenAI Models Section -->
+        {% if model_data.get("Other GenAI Models") %}
+        <div class="category-card">
+            <h2>Other GenAI Models</h2>
+            {% for model in model_data["Other GenAI Models"] %}
+            <div class="model">
+                <div>{{ model }}</div>
+                <select id="benchmark-genai-{{ loop.index }}" class="apple-dropdown">
+                    <!-- Keep original dropdown options for GenAI -->
+                    {% for option in genai_benchmarks %}
+                    <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+                <div class="buttons">
+                    <form action="{{ url_for('evaluate_genai', model_name=model) }}" method="post">
+                        <input type="hidden" name="benchmark" id="benchmark-input-genai-{{ loop.index }}">
+                        <button class="eval-btn" type="submit" onclick="setBenchmark('genai', {{ loop.index }})">Evaluate</button>
+                    </form>
+                    <form method="GET" action="{{ url_for('history', category='Other GenAI Models', model_name=model) }}" style="display:inline;">
+                        <button class="history-btn" type="submit">History</button>
+                    </form>
+                    <form action="{{ url_for('custom_genai', model_name=model) }}" method="get">
+                        <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
+                    </form>
+                </div>
+            </div>
+            <div class="dashed-line"></div>
+            {% endfor %}
         </div>
-        {% endfor %}
+        {% endif %}
     </div>
+
     <script>
-        function setBenchmark(index) {
-            const dropdown = document.getElementById('benchmark-' + index);
-            const hiddenInput = document.getElementById('benchmark-input-' + index);
+        function setBenchmark(type, index) {
+            const dropdown = document.getElementById('benchmark-' + type + '-' + index);
+            const hiddenInput = document.getElementById('benchmark-input-' + type + '-' + index);
             hiddenInput.value = dropdown.value;
         }
-    </script>
+
+        // ML Tabs
+        function showMLTab(tab) {
+            ['regression', 'classification', 'clustering', 'others'].forEach(function(name) {
+                document.getElementById('ml-content-' + name).classList.remove('active');
+                document.getElementById('ml-tab-' + name).classList.remove('active');
+            });
+            document.getElementById('ml-content-' + tab).classList.add('active');
+            document.getElementById('ml-tab-' + tab).classList.add('active');
+        }
+
+        // DL Tabs
+        function showDLTab(tab) {
+            ['nlp', 'computer_vision', 'others'].forEach(function(name) {
+                document.getElementById('dl-content-' + name).classList.remove('active');
+                document.getElementById('dl-tab-' + name).classList.remove('active');
+            });
+            document.getElementById('dl-content-' + tab).classList.add('active');
+            document.getElementById('dl-tab-' + tab).classList.add('active');
+        }
+
+        // Set default tabs on page load
+        window.onload = function() {
+            showMLTab('regression');
+            showDLTab('nlp');
+        };
+        </script>
 </body>
 </html>

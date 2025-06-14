@@ -27,3 +27,5 @@ weasyprint
 rapidfuzz
 sentence_transformers
 openpyxl
+diffusers
+invisible_watermark
