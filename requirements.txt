@@ -29,3 +29,5 @@ sentence_transformers
 openpyxl
 diffusers
 invisible_watermark
+seaborn
+mlflow

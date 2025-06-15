@@ -12,7 +12,7 @@ from collections import defaultdict
 from werkzeug.utils import secure_filename
 import uuid
 # Import your evaluation functions
-
+from evaluate_ml_supervised_mlflow import run_ml_evaluation, get_ml_progress, get_ml_results, clear_ml_progress, update_progress
 from evaluate_llm import get_history, run_evaluation, _save_enhanced_results 
 
 
@@ -59,7 +59,7 @@ def create_model_directories():
         "llm": [],
         "genai": [],
         "dl": ["computer_vision", "nlp", "others"],
-        "ml": ["regression", "classification", "clustering", "others"]
+        "ml": ["supervised", "unsupervised", "reinforcement", "others"]
     }
 
     # Create folders
@@ -93,7 +93,7 @@ LLM_BENCHMARKS = [
 ]
 
 ML_BENCHMARKS = [
-    "scikit-learn", "Yellowbrick", "Evidently AI", "MLflow", "Weights & Biases", "AutoML (TPOT, H2O)"
+    "MLflow", "scikit-learn", "Yellowbrick", "Evidently AI", "Weights & Biases", "AutoML (TPOT, H2O)"
 ]
 
 DL_BENCHMARKS = []  # Add DL benchmarks if needed
@@ -119,9 +119,9 @@ def index():
             if display_name == "ML Models":
                 # Handle ML Models with subcategories
                 model_data[display_name] = {
-                    "regression": [],
-                    "classification": [],
-                    "clustering": [],
+                    "supervised": [],
+                    "unsupervised": [],
+                    "reinforcement": [],
                     "others": []
                 }
                 # Check for subcategory folders or categorize models
@@ -129,7 +129,7 @@ def index():
                     item_path = os.path.join(path, item)
                     if os.path.isdir(item_path):
                         # Check if it's a subcategory folder
-                        if item in ["regression", "classification", "clustering", "others"]:
+                        if item in ["supervised", "unsupervised", "reinforcement", "others"]:
                             models = [model for model in os.listdir(item_path) 
                                     if os.path.isdir(os.path.join(item_path, model))]
                             model_data[display_name][item] = models
@@ -164,9 +164,9 @@ def index():
         else:
             if display_name in ["ML Models", "DL Models"]:
                 model_data[display_name] = {
-                    "regression": [] if display_name == "ML Models" else [],
-                    "classification": [] if display_name == "ML Models" else [],
-                    "clustering": [] if display_name == "ML Models" else [],
+                    "supervised": [] if display_name == "ML Models" else [],
+                    "unsupervised": [] if display_name == "ML Models" else [],
+                    "reinforcement": [] if display_name == "ML Models" else [],
                     "computer_vision": [] if display_name == "DL Models" else [],
                     "nlp": [] if display_name == "DL Models" else [],
                     "others": []
@@ -182,13 +182,168 @@ def index():
 @app.route('/evaluate_ml/<model_name>/<subcategory>', methods=['POST'])
 def evaluate_ml(model_name, subcategory):
     """Evaluate ML models with subcategory support."""
-    benchmark = request.form.get('benchmark', 'scikit-learn')
+    benchmark = request.form.get('benchmark', 'MLflow')
     
-    print(f"Evaluating ML model {model_name} (subcategory: {subcategory}) on benchmark: {benchmark}")
+    print(f"Evaluating ML model {model_name} (subcategory: {subcategory}) on benchmark: {benchmark}")   
+        
     
-    # For now, show not supported message
-    flash(f"ML model evaluation for {benchmark} is not yet implemented.")
-    return redirect(url_for('index'))
+    try:
+        # Define paths based on model structure
+        model_path = os.path.join('models', 'ml', subcategory, model_name, 'model')
+        dataset_path = os.path.join('models', 'ml', subcategory, model_name, 'dataset')
+        
+        # Validate paths exist
+        if not os.path.exists(model_path):
+            flash(f"Model path not found: {model_path}")
+            return redirect(url_for('index'))
+        
+        if not os.path.exists(dataset_path):
+            flash(f"Dataset path not found: {dataset_path}")
+            return redirect(url_for('index'))
+        
+        # Check for required files
+        model_files = [f for f in os.listdir(model_path) if f.endswith('.pkl')]
+        print(f'Found model files: {model_files}')
+        dataset_files = [f for f in os.listdir(dataset_path) if f.endswith('.zip')]
+        print(f'Found dataset files: {dataset_files}')
+        if not model_files:
+            flash(f"No pickle model file found in {model_path}")
+            return redirect(url_for('index'))
+        
+        if not dataset_files:
+            flash(f"No dataset zip file found in {dataset_path}")
+            return redirect(url_for('index'))
+        
+        # Clear any existing progress/results for this model
+        # clear_ml_progress(model_name)
+        
+        # Start evaluation in background thread
+        evaluation_thread = threading.Thread(
+            target=run_ml_evaluation_wrapper,
+            args=(model_name, model_path, dataset_path, benchmark),
+            daemon=True
+        )
+        evaluation_thread.start()
+        
+        # Flash success message and redirect to evaluation page
+        flash(f"ML model evaluation started for {model_name}. Check progress on the evaluation page.")
+        
+        # Render the evaluation template
+        return render_template('evaluate_ml_supervised_mlflow.html', 
+                             model_name=model_name, 
+                             subcategory=subcategory,
+                             benchmark=benchmark)
+        
+    except Exception as e:
+        print(f"Error starting ML evaluation: {e}")
+        flash(f"Error starting evaluation: {str(e)}")
+        return redirect(url_for('index'))
+
+def run_ml_evaluation_wrapper(model_name, model_path, dataset_path, benchmark):
+    """Wrapper function to run ML evaluation in background thread."""
+    try:
+        print(f"Starting ML evaluation for {model_name}")
+        
+        # Run the evaluation
+        results = run_ml_evaluation(model_name, model_path, dataset_path)
+        
+        print(f"ML evaluation completed for {model_name}")
+        
+    except Exception as e:
+        print(f"Error in ML evaluation thread: {e}")
+        # Update progress with error
+        update_progress(model_name, f"Error: {str(e)}", 0)
+
+# API endpoints for progress tracking and results
+@app.route('/api/ml_progress/<model_name>')
+def get_ml_evaluation_progress(model_name):
+    """Get current progress of ML model evaluation."""
+    progress = get_ml_progress(model_name)
+    return jsonify(progress)
+
+@app.route('/api/ml_results/<model_name>')
+def get_ml_evaluation_results(model_name):
+    """Get evaluation results for a specific model."""
+    results = get_ml_results(model_name)
+    return jsonify(results)
+
+@app.route('/api/download_report/<model_name>')
+def download_ml_report(model_name):
+    """Download comprehensive evaluation report."""
+    try:
+        results = get_ml_results(model_name)
+        if not results or 'error' in results:
+            flash("No results available for download")
+            return redirect(url_for('index'))
+        
+        # Generate report content
+        report_content = generate_ml_report(results)
+        
+        # Create response
+        response = make_response(report_content)
+        response.headers['Content-Type'] = 'application/json'
+        response.headers['Content-Disposition'] = f'attachment; filename=ml_evaluation_report_{model_name}.json'
+        
+        return response
+        
+    except Exception as e:
+        flash(f"Error generating report: {str(e)}")
+        return redirect(url_for('index'))
+
+def generate_ml_report(results):
+    """Generate comprehensive ML evaluation report."""
+    report = {
+        'model_name': results.get('model_name'),
+        'evaluation_timestamp': results.get('timestamp'),
+        'problem_type': results.get('problem_type'),
+        'dataset_info': results.get('dataset_info'),
+        'performance_metrics': results.get('metrics'),
+        'mlflow_run_id': results.get('mlflow_run_id'),
+        'summary': {
+            'evaluation_completed': True,
+            'total_samples': results.get('dataset_info', {}).get('n_samples', 0),
+            'total_features': results.get('dataset_info', {}).get('n_features', 0)
+        }
+    }
+    
+    # Add key performance indicators
+    metrics = results.get('metrics', {})
+    if results.get('problem_type') == 'classification':
+        report['summary']['key_metrics'] = {
+            'accuracy': metrics.get('accuracy', 0),
+            'precision': metrics.get('precision', 0),
+            'recall': metrics.get('recall', 0),
+            'f1_score': metrics.get('f1_score', 0)
+        }
+        if 'roc_auc' in metrics:
+            report['summary']['key_metrics']['roc_auc'] = metrics['roc_auc']
+    else:
+        report['summary']['key_metrics'] = {
+            'r2_score': metrics.get('r2_score', 0),
+            'rmse': metrics.get('rmse', 0),
+            'mae': metrics.get('mae', 0),
+            'mape': metrics.get('mean_absolute_percentage_error', 0)
+        }
+    
+    # Add cross-validation summary
+    if 'cv_scores' in metrics and metrics['cv_scores']:
+        report['cross_validation'] = {
+            'mean_score': metrics['cv_scores']['mean'],
+            'std_score': metrics['cv_scores']['std'],
+            'individual_scores': metrics['cv_scores']['scores']
+        }
+    
+    return json.dumps(report, indent=2, default=str)
+
+# Additional helper route for clearing evaluation data
+@app.route('/api/clear_ml_evaluation/<model_name>', methods=['POST'])
+def clear_ml_evaluation_data(model_name):
+    """Clear evaluation progress and results for a specific model."""
+    try:
+        clear_ml_progress(model_name)
+        return jsonify({'status': 'success', 'message': f'Cleared evaluation data for {model_name}'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/evaluate_dl/<model_name>/<subcategory>', methods=['POST'])
 def evaluate_dl(model_name, subcategory):

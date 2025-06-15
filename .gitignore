@@ -1,6 +1,9 @@
 venv/
-models/
+models/llm/
 log/
 __pycache__/
 BIG-bench/
 evaluation_results/
+static/plots/
+mlruns/
+temp_datasets/

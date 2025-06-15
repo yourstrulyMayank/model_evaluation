@@ -72,6 +72,7 @@
         .category-card.ml, .category-card.dl {
             grid-column: span 1;
             min-width: 0;
+            box-sizing: border-box;
         }
         .category-card h2 {
             color: #0071e3;
@@ -85,9 +86,56 @@
             margin-bottom: 15px;
             text-align: center;
         }
+        .category-card.ml .tabs {
+            width: 100%;
+            box-sizing: border-box;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        .category-card.ml {
+            padding-bottom: 20px;
+            overflow: hidden;
+        }
+        .category-card.ml .tab {
+            flex: 1 1 0;
+            min-width: 0;
+            margin-right: 6px;
+            margin-bottom: 0;
+        }
+        .category-card.ml .ml-tabs-row:last-child .tab:last-child {
+            margin-right: 0;
+        }
 
         .buttons {
             margin-top: 5px;
+        }
+        .category-card.ml .ml-tabs-row:last-of-type {
+            margin-bottom: 40px; /* Ensures extra space below the last ML tabs row */
+        }
+        .ml-tabs-row:first-of-type {
+            z-index: 1;
+        }
+        .ml-tabs-row:last-of-type {
+            z-index: 3;
+        }
+        .ml-tabs-row:last-of-type .tab {
+            z-index: 3;
+            position: relative;
+        }
+        .ml-tabs-row:first-of-type .tab {
+            z-index: 1;
+            position: relative;
+        }
+        .ml-tabs-row:first-of-type .tab.active,
+        .ml-tabs-row:first-of-type .tab:hover {
+            z-index: 1; /* Keep top row tabs behind bottom row even when active */
+            transform: scale(1.08); /* Slightly reduced scale to prevent excessive overlap */
+        }
+
+        .ml-tabs-row:last-of-type .tab.active,
+        .ml-tabs-row:last-of-type .tab:hover {
+            z-index: 3; /* Bottom row can come forward when active */
+            transform: scale(1.08);
         }
 
         .eval-btn, .history-btn, .cstm-eval-btn {
@@ -181,44 +229,88 @@
                 gap: 15px;
                 margin-top: 20px;
             }
+            #dl-tab-computer_vision {
+                font-size: 13px; /* Smaller font for longer text */
+            }
+            #dl-tab-computer_vision.active,
+            #dl-tab-computer_vision:hover {
+                transform: scale(1.08); /* Reduced scale for computer vision tab */
+                font-size: 14px; /* Slightly larger when active but still controlled */
+            }
             .tabs {
                 display: flex;
                 border-bottom: 2px solid #e0e0e0;
                 margin-bottom: 16px;
                 margin-top: 6px;
                 justify-content: center;
+                /* Remove width: 100% if present */
+                flex-wrap: nowrap;
+                background: none;
+                box-sizing: border-box;
+                padding: 0;
+            }
+            .ml-tabs-row {
+                border-bottom: none;
+                margin-bottom: 0;
+                margin-top: 0;
+                justify-content: center;
+                background: none;
+                box-shadow: none;
+                padding: 0;
+                position: relative;
+            }
+            .ml-tabs-row + .ml-tabs-row {
+                margin-top: -7px; /* overlap the bottom row upwards */
+                margin-bottom: 40px;
+                z-index: 3;
             }
             .tab {
-                padding: 7px 16px;
+                padding: 5px 2px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                min-height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
                 cursor: pointer;
                 border: none;
                 border-radius: 10px 10px 0 0;
-                margin-right: 6px;
+                margin-right: 0px;
                 font-size: 14px;
                 font-weight: 600;
                 outline: none;
-                min-width: 90px;
+                min-width: 100px;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-                transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+                transition: 
+                    background 0.2s, 
+                    color 0.2s, 
+                    box-shadow 0.2s, 
+                    border-bottom 0.2s,
+                    transform 0.2s;
                 position: relative;
-                top: 2px;
+                top: 1px;
+                color: #111 !important;
             }
-            /* ML Tabs: Regression, Classification, Clustering, Others */
-            #ml-tab-regression { background: linear-gradient(90deg, #e3f0ff 0%, #b3d8fd 100%); color: #005bb5; }
-            #ml-tab-classification { background: linear-gradient(90deg, #fbefff 0%, #e3b3fd 100%); color: #6b0ba3; }
-            #ml-tab-clustering { background: linear-gradient(90deg, #eafff3 0%, #b3fdd1 100%); color: #008060; }
-            #ml-tab-others { background: linear-gradient(90deg, #fffbe3 0%, #fdf3b3 100%); color: #b58c00; }
-            /* DL Tabs: NLP, Computer Vision, Others */
-            #dl-tab-nlp { background: linear-gradient(90deg, #e3f7ff 0%, #b3eafd 100%); color: #0071e3; }
-            #dl-tab-computer_vision { background: linear-gradient(90deg, #ffe3f7 0%, #fdb3e9 100%); color: #b5007a; }
-            #dl-tab-others { background: linear-gradient(90deg, #f3ffe3 0%, #d6fdb3 100%); color: #5bb500; }
+            
+            #ml-tab-supervised { background:rgb(14, 144, 231); }
+            #ml-tab-unsupervised { background:rgb(183, 17, 230); }
+            #ml-tab-reinforcement { background:rgb(16, 236, 123); }
+            #ml-tab-others { background:rgb(238, 219, 12); }
+            
+            #dl-tab-nlp { background:rgb(20, 155, 228); }
+            #dl-tab-computer_vision { background:rgb(183, 17, 230); }
+            #dl-tab-others { background:rgb(238, 219, 12); }
             /* Active/hover state for all tabs */
             .tab.active, .tab:hover {
-                background: linear-gradient(180deg, #fff 60%, #e4ecf7 100%);
-                color: #6b0ba3 !important;
+                
+                color: #111 !important;
                 box-shadow: 0 4px 16px rgba(107,11,163,0.08);
-                border-bottom: 2px solid #fff;
+                border-bottom: 4px solid #111;
                 z-index: 2;
+                font-size: 15px;
+                transform: scale(1.06);
+                font-weight: 700;
             }
             .tab-content {
                 display: none;
@@ -240,6 +332,16 @@
             @media (max-width: 700px) {
                 .categories-grid {
                     grid-template-columns: 1fr;
+                }
+                .category-card.ml .tabs {
+                    flex-direction: column;
+                }
+                .ml-tabs-row {
+                    flex-direction: column;
+                }
+                .category-card.ml .tab {
+                    margin-bottom: 6px;
+                    margin-right: 0;
                 }
             }
     </style>
@@ -290,95 +392,97 @@
             {% if model_data.get("ML Models") %}
             <div class="category-card ml">
                 <h2>ML Models</h2>
-                <div class="tabs" id="ml-tabs">
-                    <button class="tab" onclick="showMLTab('regression')" id="ml-tab-regression">Regression</button>
-                    <button class="tab" onclick="showMLTab('classification')" id="ml-tab-classification">Classification</button>
-                    <button class="tab" onclick="showMLTab('clustering')" id="ml-tab-clustering">Clustering</button>
+                <div class="tabs ml-tabs-row">
+                    <button class="tab" onclick="showMLTab('supervised')" id="ml-tab-supervised">Supervised</button>
+                    <button class="tab" onclick="showMLTab('unsupervised')" id="ml-tab-unsupervised">Unsupervised</button>
+                </div>
+                <div class="tabs ml-tabs-row">
+                    <button class="tab" onclick="showMLTab('reinforcement')" id="ml-tab-reinforcement">Reinforcement</button>
                     <button class="tab" onclick="showMLTab('others')" id="ml-tab-others">Others</button>
                 </div>
-                <div class="tab-content" id="ml-content-regression">
-                    {% for model in model_data["ML Models"].get("regression", []) %}
+                <div class="tab-content" id="ml-content-supervised">
+                    {% for model in model_data["ML Models"].get("supervised", []) %}
                     <div class="model">
                         <div>{{ model }}</div>
-                        <select id="benchmark-ml-regression-{{ loop.index }}" class="apple-dropdown">
+                        <select id="benchmark-ml-supervised-{{ loop.index }}" class="apple-dropdown">
                             {% for option in ml_benchmarks %}
                             <option value="{{ option }}">{{ option }}</option>
                             {% endfor %}
                         </select>
                         <div class="buttons">
-                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='regression') }}" method="post">
-                                <input type="hidden" name="benchmark" id="benchmark-input-ml-regression-{{ loop.index }}">
-                                <button class="eval-btn" type="submit" onclick="setBenchmark('ml-regression', {{ loop.index }})">Evaluate</button>
+                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='supervised') }}" method="post">
+                                <input type="hidden" name="benchmark" id="benchmark-input-ml-supervised-{{ loop.index }}">
+                                <button class="eval-btn" type="submit" onclick="setBenchmark('ml-supervised', {{ loop.index }})">Evaluate</button>
                             </form>
                             <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
                                 <button class="history-btn" type="submit">History</button>
                             </form>
-                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='regression') }}" method="get">
+                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='supervised') }}" method="get">
                                 <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
                             </form>
                         </div>
                     </div>
                     <div class="dashed-line"></div>
                     {% endfor %}
-                    {% if not model_data["ML Models"].get("regression") %}
-                    <p><em>No regression models found.</em></p>
+                    {% if not model_data["ML Models"].get("supervised") %}
+                    <p><em>No supervised models found.</em></p>
                     {% endif %}
                 </div>
-                <div class="tab-content" id="ml-content-classification">
-                    {% for model in model_data["ML Models"].get("classification", []) %}
+                <div class="tab-content" id="ml-content-unsupervised">
+                    {% for model in model_data["ML Models"].get("unsupervised", []) %}
                     <div class="model">
                         <div>{{ model }}</div>
-                        <select id="benchmark-ml-classification-{{ loop.index }}" class="apple-dropdown">
+                        <select id="benchmark-ml-unsupervised-{{ loop.index }}" class="apple-dropdown">
                             {% for option in ml_benchmarks %}
                             <option value="{{ option }}">{{ option }}</option>
                             {% endfor %}
                         </select>
                         <div class="buttons">
-                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='classification') }}" method="post">
-                                <input type="hidden" name="benchmark" id="benchmark-input-ml-classification-{{ loop.index }}">
-                                <button class="eval-btn" type="submit" onclick="setBenchmark('ml-classification', {{ loop.index }})">Evaluate</button>
+                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='unsupervised') }}" method="post">
+                                <input type="hidden" name="benchmark" id="benchmark-input-ml-unsupervised-{{ loop.index }}">
+                                <button class="eval-btn" type="submit" onclick="setBenchmark('ml-unsupervised', {{ loop.index }})">Evaluate</button>
                             </form>
                             <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
                                 <button class="history-btn" type="submit">History</button>
                             </form>
-                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='classification') }}" method="get">
+                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='unsupervised') }}" method="get">
                                 <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
                             </form>
                         </div>
                     </div>
                     <div class="dashed-line"></div>
                     {% endfor %}
-                    {% if not model_data["ML Models"].get("classification") %}
-                    <p><em>No classification models found.</em></p>
+                    {% if not model_data["ML Models"].get("unsupervised") %}
+                    <p><em>No unsupervised models found.</em></p>
                     {% endif %}
                 </div>
                 
-                <div class="tab-content" id="ml-content-clustering">
-                    {% for model in model_data["ML Models"].get("clustering", []) %}
+                <div class="tab-content" id="ml-content-reinforcement">
+                    {% for model in model_data["ML Models"].get("reinforcement", []) %}
                     <div class="model">
                         <div>{{ model }}</div>
-                        <select id="benchmark-ml-clustering-{{ loop.index }}" class="apple-dropdown">
+                        <select id="benchmark-ml-reinforcement-{{ loop.index }}" class="apple-dropdown">
                             {% for option in ml_benchmarks %}
                             <option value="{{ option }}">{{ option }}</option>
                             {% endfor %}
                         </select>
                         <div class="buttons">
-                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='clustering') }}" method="post">
-                                <input type="hidden" name="benchmark" id="benchmark-input-ml-clustering-{{ loop.index }}">
-                                <button class="eval-btn" type="submit" onclick="setBenchmark('ml-clustering', {{ loop.index }})">Evaluate</button>
+                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='reinforcement') }}" method="post">
+                                <input type="hidden" name="benchmark" id="benchmark-input-ml-reinforcement-{{ loop.index }}">
+                                <button class="eval-btn" type="submit" onclick="setBenchmark('ml-reinforcement', {{ loop.index }})">Evaluate</button>
                             </form>
                             <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
                                 <button class="history-btn" type="submit">History</button>
                             </form>
-                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='clustering') }}" method="get">
+                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='reinforcement') }}" method="get">
                                 <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
                             </form>
                         </div>
                     </div>
                     <div class="dashed-line"></div>
                     {% endfor %}
-                    {% if not model_data["ML Models"].get("clustering") %}
-                    <p><em>No clustering models found.</em></p>
+                    {% if not model_data["ML Models"].get("reinforcement") %}
+                    <p><em>No reinforcement learning models found.</em></p>
                     {% endif %}
                 </div>
                 <div class="tab-content" id="ml-content-others">
@@ -418,7 +522,7 @@
                 <h2>DL Models</h2>
                 <div class="tabs" id="dl-tabs">
                     <button class="tab" onclick="showDLTab('nlp')" id="dl-tab-nlp">NLP</button>
-                    <button class="tab" onclick="showDLTab('computer_vision')" id="dl-tab-computer_vision">Computer Vision</button>
+                    <button class="tab" onclick="showDLTab('computer_vision')" id="dl-tab-computer_vision">CV</button>
                     <button class="tab" onclick="showDLTab('others')" id="dl-tab-others">Others</button>
                 </div>
                 <div class="tab-content" id="dl-content-nlp">
@@ -549,7 +653,7 @@
 
         // ML Tabs
         function showMLTab(tab) {
-            ['regression', 'classification', 'clustering', 'others'].forEach(function(name) {
+            ['supervised', 'unsupervised', 'reinforcement', 'others'].forEach(function(name) {
                 document.getElementById('ml-content-' + name).classList.remove('active');
                 document.getElementById('ml-tab-' + name).classList.remove('active');
             });
@@ -569,7 +673,7 @@
 
         // Set default tabs on page load
         window.onload = function() {
-            showMLTab('regression');
+            showMLTab('supervised');
             showDLTab('nlp');
         };
         </script>
