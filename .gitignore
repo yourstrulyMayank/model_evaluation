@@ -7,3 +7,4 @@ evaluation_results/
 static/plots/
 mlruns/
 temp_datasets/
+results/

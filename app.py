@@ -1,20 +1,22 @@
 # app.py - Enhanced Flask App
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, send_file, make_response
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, send_file, make_response, send_from_directory
 import os
 import threading
 import json
 import datetime
 from io import BytesIO
 import base64
+import pandas as pd
+import matplotlib.pyplot as plt
 import os
 from datetime import datetime
 from collections import defaultdict
 from werkzeug.utils import secure_filename
 import uuid
 # Import your evaluation functions
-from evaluate_ml_supervised_mlflow import run_ml_evaluation, get_ml_progress, get_ml_results, clear_ml_progress, update_progress
+from evaluate_ml_supervised_mlflow import run_ml_evaluation, get_ml_progress, get_ml_results, clear_ml_progress, update_progress, export_results_to_json, list_available_results
 from evaluate_llm import get_history, run_evaluation, _save_enhanced_results 
-
+import numpy as np
 
 
 
@@ -185,50 +187,47 @@ def evaluate_ml(model_name, subcategory):
     benchmark = request.form.get('benchmark', 'MLflow')
     
     print(f"Evaluating ML model {model_name} (subcategory: {subcategory}) on benchmark: {benchmark}")   
-        
     
-    try:
-        # Define paths based on model structure
+    try:        
+        # Correct path structure for your model
         model_path = os.path.join('models', 'ml', subcategory, model_name, 'model')
-        dataset_path = os.path.join('models', 'ml', subcategory, model_name, 'dataset')
+        dataset_path = os.path.join('models', 'ml', subcategory, model_name, 'dataset')        
+        test_csv_path = os.path.join(dataset_path, 'test.csv')  # Look for test.csv in model directory
+        model_file_path = os.path.join(model_path, 'model.pkl')  # Look for model.pkl
+                
         
         # Validate paths exist
         if not os.path.exists(model_path):
-            flash(f"Model path not found: {model_path}")
+            flash(f"Model directory not found: {model_path}")
             return redirect(url_for('index'))
         
-        if not os.path.exists(dataset_path):
-            flash(f"Dataset path not found: {dataset_path}")
+        
+        if not os.path.exists(model_file_path):
+            flash(f"Model file not found: {model_file_path}")
             return redirect(url_for('index'))
+        else:
+            print(f'Found model: {model_file_path}')
+
         
-        # Check for required files
-        model_files = [f for f in os.listdir(model_path) if f.endswith('.pkl')]
-        print(f'Found model files: {model_files}')
-        dataset_files = [f for f in os.listdir(dataset_path) if f.endswith('.zip')]
-        print(f'Found dataset files: {dataset_files}')
-        if not model_files:
-            flash(f"No pickle model file found in {model_path}")
+        if not os.path.exists(test_csv_path):
+            flash(f"Test CSV file not found: {test_csv_path}")
             return redirect(url_for('index'))
-        
-        if not dataset_files:
-            flash(f"No dataset zip file found in {dataset_path}")
-            return redirect(url_for('index'))
-        
-        # Clear any existing progress/results for this model
-        # clear_ml_progress(model_name)
-        
+        else:
+            print(f'Found test csv: {test_csv_path}')
+
+        from concurrent.futures import ThreadPoolExecutor
+        import threading
+        evaluation_lock = threading.Lock()
         # Start evaluation in background thread
-        evaluation_thread = threading.Thread(
-            target=run_ml_evaluation_wrapper,
-            args=(model_name, model_path, dataset_path, benchmark),
-            daemon=True
-        )
-        evaluation_thread.start()
+        # Start evaluation with proper resource management
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(
+                run_ml_evaluation_wrapper,
+                model_name, model_file_path, test_csv_path, benchmark
+            )
         
-        # Flash success message and redirect to evaluation page
         flash(f"ML model evaluation started for {model_name}. Check progress on the evaluation page.")
         
-        # Render the evaluation template
         return render_template('evaluate_ml_supervised_mlflow.html', 
                              model_name=model_name, 
                              subcategory=subcategory,
@@ -238,21 +237,100 @@ def evaluate_ml(model_name, subcategory):
         print(f"Error starting ML evaluation: {e}")
         flash(f"Error starting evaluation: {str(e)}")
         return redirect(url_for('index'))
+    #     evaluation_thread = threading.Thread(
+    #         target=run_ml_evaluation_wrapper,
+    #         args=(model_name, model_file_path, test_csv_path, benchmark),
+    #         daemon=True
+    #     )
+    #     evaluation_thread.start()
+        
+    #     flash(f"ML model evaluation started for {model_name}. Check progress on the evaluation page.")
+        
+    #     return render_template('evaluate_ml_supervised_mlflow.html', 
+    #                          model_name=model_name, 
+    #                          subcategory=subcategory,
+    #                          benchmark=benchmark)
+        
+    # except Exception as e:
+    #     print(f"Error starting ML evaluation: {e}")
+    #     flash(f"Error starting evaluation: {str(e)}")
+    #     return redirect(url_for('index'))
 
-def run_ml_evaluation_wrapper(model_name, model_path, dataset_path, benchmark):
+def run_ml_evaluation_wrapper(model_name, model_file_path, test_csv_path, benchmark):
     """Wrapper function to run ML evaluation in background thread."""
     try:
+        # Ensure matplotlib uses non-GUI backend in thread
+        import matplotlib
+        matplotlib.use('Agg')
+        
         print(f"Starting ML evaluation for {model_name}")
+        print(f"Model file: {model_file_path}")
+        print(f"Test data: {test_csv_path}")
         
         # Run the evaluation
-        results = run_ml_evaluation(model_name, model_path, dataset_path)
+        results = run_ml_evaluation(model_name, model_file_path, test_csv_path)
         
         print(f"ML evaluation completed for {model_name}")
         
+        # Clean up matplotlib resources
+        import matplotlib.pyplot as plt
+        plt.close('all')
+        
     except Exception as e:
         print(f"Error in ML evaluation thread: {e}")
-        # Update progress with error
         update_progress(model_name, f"Error: {str(e)}", 0)
+        # Clean up on error
+        import matplotlib.pyplot as plt
+        plt.close('all')
+
+import contextlib
+import threading
+
+plot_lock = threading.Lock()
+
+@contextlib.contextmanager
+def thread_safe_plotting():
+    """Context manager for thread-safe matplotlib operations."""
+    with plot_lock:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        try:
+            yield plt
+        finally:
+            plt.close('all')
+
+def extract_test_csv_if_needed(dataset_path):
+    """Extract test.csv from dataset.zip if it doesn't exist."""
+    test_csv_path = os.path.join(dataset_path, 'test.csv')
+    dataset_zip_path = os.path.join(dataset_path, 'dataset.zip')
+    
+    # If test.csv already exists, return its path
+    if os.path.exists(test_csv_path):
+        return test_csv_path
+    
+    # If dataset.zip exists, try to extract test.csv
+    if os.path.exists(dataset_zip_path):
+        try:
+            import zipfile
+            with zipfile.ZipFile(dataset_zip_path, 'r') as zip_ref:
+                # Look for test.csv in the zip
+                if 'test.csv' in zip_ref.namelist():
+                    zip_ref.extract('test.csv', dataset_path)
+                    return test_csv_path
+                else:
+                    # Look for any CSV file that might be the test data
+                    csv_files = [f for f in zip_ref.namelist() if f.endswith('.csv')]
+                    if csv_files:
+                        # Extract the first CSV file and rename it to test.csv
+                        zip_ref.extract(csv_files[0], dataset_path)
+                        extracted_path = os.path.join(dataset_path, csv_files[0])
+                        os.rename(extracted_path, test_csv_path)
+                        return test_csv_path
+        except Exception as e:
+            print(f"Error extracting from dataset.zip: {e}")
+    
+    return None
 
 # API endpoints for progress tracking and results
 @app.route('/api/ml_progress/<model_name>')
@@ -261,10 +339,30 @@ def get_ml_evaluation_progress(model_name):
     progress = get_ml_progress(model_name)
     return jsonify(progress)
 
+
+
+
+
+def convert_numpy_types(obj):
+    """Recursively convert numpy types to native Python types for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: convert_numpy_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(v) for v in obj]
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    else:
+        return obj
+    
 @app.route('/api/ml_results/<model_name>')
 def get_ml_evaluation_results(model_name):
     """Get evaluation results for a specific model."""
     results = get_ml_results(model_name)
+    results = convert_numpy_types(results)
     return jsonify(results)
 
 @app.route('/api/download_report/<model_name>')
@@ -344,6 +442,92 @@ def clear_ml_evaluation_data(model_name):
         return jsonify({'status': 'success', 'message': f'Cleared evaluation data for {model_name}'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+    
+
+
+@app.route('/api/ml_progress/<model_name>')
+def get_progress(model_name):
+    """API endpoint to get evaluation progress"""
+    progress = get_ml_progress(model_name)
+    return jsonify(progress)
+
+@app.route('/api/ml_results/<model_name>')
+def get_results(model_name):
+    """API endpoint to get evaluation results"""
+    results = get_ml_results(model_name)
+    if not results:
+        return jsonify({"error": "No results found"}), 404
+    return jsonify(results)
+
+@app.route('/api/start_evaluation/<model_name>', methods=['POST'])
+def start_evaluation_api(model_name):
+    """API endpoint to start model evaluation with proper resource management."""
+    print('------------------------------------')
+    print(f'Starting the evaluation api for model: {model_name}')
+    try:
+        # Get model and dataset paths from request or session
+        model_path = request.json.get('model_path')
+        dataset_path = request.json.get('dataset_path')
+        print(f"Model path: {model_path}, Dataset path: {dataset_path}")
+        
+        if not model_path or not dataset_path:
+            return jsonify({"error": "Model path and dataset path required"}), 400
+        
+        # Use ThreadPoolExecutor for better resource management
+        from concurrent.futures import ThreadPoolExecutor
+        
+        def run_evaluation_task():
+            try:
+                run_ml_evaluation(model_name, model_path, dataset_path)
+            except Exception as e:
+                print(f"Evaluation task failed: {e}")
+                update_progress(model_name, f"Error: {str(e)}", 0)
+        
+        # Submit task to thread pool
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(run_evaluation_task)
+        
+        return jsonify({"status": "started"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/export_results/<model_name>/<format>')
+def export_results_api(model_name, format):
+    """API endpoint to export results"""
+    try:
+        results = get_ml_results(model_name)
+        if not results:
+            return jsonify({"error": "No results found"}), 404
+        
+        if format == 'json':
+            output_path = export_results_to_json(model_name)
+            return send_file(output_path, as_attachment=True)
+        elif format == 'csv':
+            # Create CSV export
+            output_dir = f"results/{model_name}"
+            os.makedirs(output_dir, exist_ok=True)
+            csv_path = os.path.join(output_dir, f"ml_evaluation_{model_name}.csv")
+            metrics_df = pd.DataFrame([results['metrics']])
+            metrics_df.to_csv(csv_path, index=False)
+            return send_file(csv_path, as_attachment=True)
+        else:
+            return jsonify({"error": "Invalid format"}), 400
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/plots/<model_name>/<filename>')
+def serve_plot(model_name, filename):
+    """Serve plot images from static/plots/{model_name}/."""
+    return send_from_directory(f'static/plots/{model_name}', filename)
+
+
+@app.route('/api/available_models')
+def get_available_models():
+    """API endpoint to get list of available models"""
+    models = list_available_results()
+    return jsonify(models)
+
 
 @app.route('/evaluate_dl/<model_name>/<subcategory>', methods=['POST'])
 def evaluate_dl(model_name, subcategory):
@@ -672,6 +856,12 @@ def run_custom_evaluation_route(model_name):
         print(f"Error starting evaluation: {e}")
         processing_status[f"{model_name}_custom"] = "error"
         return jsonify({'error': f'Error starting evaluation: {str(e)}'}), 500
+
+
+
+
+
+
 
 @app.route('/check_custom_status/<model_name>')
 def check_custom_status(model_name):
