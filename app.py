@@ -9,6 +9,9 @@ import base64
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import traceback
+import logging
+import openpyxl
 from datetime import datetime
 from collections import defaultdict
 from werkzeug.utils import secure_filename
@@ -16,9 +19,20 @@ import uuid
 # Import your evaluation functions
 from evaluate_ml_supervised_mlflow import run_ml_evaluation, get_ml_progress, get_ml_results, clear_ml_progress, update_progress, export_results_to_json, list_available_results
 from evaluate_llm import get_history, run_evaluation, _save_enhanced_results 
+from custom_evaluate_ml import (
+    run_custom_ml_evaluation_task,
+    clear_custom_ml_results,
+    get_custom_ml_status,
+    export_custom_ml_excel,
+    export_custom_ml_csv,
+    custom_evaluation_results,           # <-- add this
+    custom_evaluation_progress           # <-- add this
+)
 import numpy as np
 
-
+# Add logging configuration
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -45,7 +59,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 # Create upload directory
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Add this global variable with other globals
-custom_evaluation_results = {}  # Store custom evaluation results
+
 
 categories = {
     "llm": [],
@@ -565,19 +579,247 @@ def evaluate_genai(model_name):
     run_evaluation_in_background(model_name, model_path, eval_params)
     return render_template('loading.html', model_name=model_name)
 
+# @app.route('/custom_ml/<model_name>/<subcategory>')
+# def custom_ml(model_name, subcategory):
+#     """Custom evaluation page for ML models."""
+#     # Get existing uploaded files for this model
+#     model_upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
+#     os.makedirs(model_upload_dir, exist_ok=True)
+#     uploaded_files = []
+#     if os.path.exists(model_upload_dir):
+#         uploaded_files = [f for f in os.listdir(model_upload_dir) 
+#                          if os.path.isfile(os.path.join(model_upload_dir, f))]
+#     print(f"Uploaded files for {model_name}: {uploaded_files}")
+#     # Get evaluation results if available
+#     results = custom_evaluation_results.get(f"{model_name}_ml", {})
+    
+#     return render_template('custom_ml.html', 
+#                          model_name=model_name, 
+#                          subcategory=subcategory,
+#                          uploaded_files=uploaded_files,
+#                          evaluation_results=results)
+
+@app.route('/upload_ml_files/<model_name>', methods=['POST'])
+def upload_ml_files(model_name):
+    """Upload model and test files for custom ML evaluation."""
+    try:
+        model_upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
+        os.makedirs(model_upload_dir, exist_ok=True)
+        
+        uploaded_files = []
+        
+        # Handle model file upload
+        if 'model_file' in request.files:
+            model_file = request.files['model_file']
+            if model_file.filename != '':
+                filename = secure_filename(model_file.filename)
+                model_path = os.path.join(model_upload_dir, filename)
+                model_file.save(model_path)
+                uploaded_files.append(f"Model: {filename}")
+        
+        # Handle test data upload
+        if 'test_file' in request.files:
+            test_file = request.files['test_file']
+            if test_file.filename != '':
+                filename = secure_filename(test_file.filename)
+                test_path = os.path.join(model_upload_dir, filename)
+                test_file.save(test_path)
+                uploaded_files.append(f"Test Data: {filename}")
+        
+        if uploaded_files:
+            return jsonify({
+                'status': 'success', 
+                'message': f'Uploaded: {", ".join(uploaded_files)}'
+            })
+        else:
+            return jsonify({'status': 'error', 'message': 'No files were uploaded'}), 400
+            
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# Add this route to your Flask app to properly pass results to template
 @app.route('/custom_ml/<model_name>/<subcategory>')
 def custom_ml(model_name, subcategory):
-    """Custom evaluation page for ML models."""
-    # Get existing uploaded files for this model
-    model_upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
-    uploaded_files = []
-    if os.path.exists(model_upload_dir):
-        uploaded_files = [f for f in os.listdir(model_upload_dir) 
-                         if os.path.isfile(os.path.join(model_upload_dir, f))]
+    """Custom ML evaluation page with results display"""
+    try:
+        # Get uploaded files
+        upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
+        uploaded_files = []
+        if os.path.exists(upload_dir):
+            uploaded_files = os.listdir(upload_dir)
+        
+        # Get evaluation results - THIS IS THE KEY FIX
+        evaluation_results = None
+        results_key = f"{model_name}_ml"
+        if results_key in custom_evaluation_results:
+            evaluation_results = custom_evaluation_results[results_key]
+            logger.info(f"Found evaluation results for {model_name}: {evaluation_results.keys()}")
+        
+        return render_template('custom_ml.html', 
+                             model_name=model_name,
+                             subcategory=subcategory,
+                             uploaded_files=uploaded_files,
+                             evaluation_results=evaluation_results)  # Pass results here
     
-    # For now, redirect to a generic custom evaluation page
-    flash(f"Custom evaluation for ML models ({subcategory}) is not yet implemented.")
-    return redirect(url_for('index'))
+    except Exception as e:
+        logger.error(f"Error in custom_ml route: {str(e)}")
+        flash(f"Error loading page: {str(e)}")
+        return redirect(url_for('index'))
+    
+@app.route('/run_custom_ml_evaluation/<model_name>', methods=['POST', 'GET'])
+def run_custom_ml_evaluation(model_name):
+    """Run custom ML evaluation with uploaded files and optional steps file."""
+    try:
+        upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
+        if not os.path.exists(upload_dir):
+            return jsonify({'error': 'No files uploaded for evaluation'}), 400
+        
+        # Find model, test, and steps files
+        files = os.listdir(upload_dir)
+        model_file = None
+        test_file = None
+        steps_file = None
+        print(files)
+        for file in files:
+            if file.endswith(('.pkl', '.joblib', '.model')):
+                model_file = os.path.join(upload_dir, file)
+            elif file.endswith(('.xlsx', '.xls', '.csv')):
+                test_file = os.path.join(upload_dir, file)
+            elif file.startswith('steps.') and file.split('.')[-1] in ('py', 'json', 'txt'):
+                steps_file = os.path.join(upload_dir, file)
+        
+        if not model_file or not test_file:
+            return jsonify({'error': 'Both model file (.pkl) and test file (.xlsx/.csv) are required'}), 400
+        
+        # Set initial status
+        processing_status[f"{model_name}_ml_custom"] = "processing"
+        
+        def background_evaluation():
+            """Background evaluation with comprehensive error handling"""
+            try:
+                logger.info(f"Starting ML evaluation for model: {model_name}")
+                logger.info(f"Model file: {model_file}")
+                logger.info(f"Test file: {test_file}")
+                logger.info(f"Steps file: {steps_file}")
+                
+                # Run the evaluation
+                result = run_custom_ml_evaluation_task(model_name, model_file, test_file, steps_file)
+                
+                logger.info(f"Evaluation completed for {model_name}")
+                if result.get('error'):
+                    logger.error(f"Evaluation error: {result['error']}")
+                    processing_status[f"{model_name}_ml_custom"] = "error"
+                else:
+                    logger.info(f"Evaluation successful for {model_name}")
+                    processing_status[f"{model_name}_ml_custom"] = "complete"
+                    
+            except Exception as e:
+                error_msg = f"Background evaluation failed: {str(e)}"
+                logger.error(f"{error_msg}\n{traceback.format_exc()}")
+                
+                # Store error in results
+                custom_evaluation_results[f"{model_name}_ml"] = {
+                    'error': error_msg,
+                    'traceback': traceback.format_exc(),
+                    'model_name': model_name,
+                    'timestamp': datetime.now().isoformat()
+                }
+                processing_status[f"{model_name}_ml_custom"] = "error"
+        
+        # Start background thread - removed daemon=True to prevent immediate shutdown
+        thread = threading.Thread(target=background_evaluation)
+        thread.start()
+        
+        logger.info(f"Background thread started for {model_name}")
+        return jsonify({'status': 'started', 'message': 'ML evaluation started successfully'})
+        
+    except Exception as e:
+        error_msg = f'Error starting evaluation: {str(e)}'
+        logger.error(f"{error_msg}\n{traceback.format_exc()}")
+        return jsonify({'error': error_msg}), 500
+
+
+@app.route('/check_custom_ml_status/<model_name>')
+def check_custom_ml_status(model_name):
+    """Check status of custom ML evaluation - FIXED VERSION"""
+    try:
+        status = processing_status.get(f"{model_name}_ml_custom", "not_started")
+        results = custom_evaluation_results.get(f"{model_name}_ml", {})
+        progress = custom_evaluation_progress.get(model_name, {})
+        
+        # Fix the response structure to match what JavaScript expects
+        if status == "complete" and results and not results.get('error'):
+            return jsonify({
+                'status': 'complete',
+                'results': results,  # Pass actual results
+                'progress': progress
+            })
+        elif status == "error" or results.get('error'):
+            return jsonify({
+                'status': 'error',
+                'results': results,
+                'progress': progress
+            })
+        else:
+            return jsonify({
+                'status': 'processing',
+                'progress': progress
+            })
+            
+    except Exception as e:
+        logger.error(f"Error checking status for {model_name}: {str(e)}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+
+@app.route('/download_custom_ml_report/<model_name>')
+def download_custom_ml_report(model_name):
+    """Download custom ML evaluation report as Excel."""
+    try:
+        output, error = export_custom_ml_excel(model_name)
+        if error:
+            flash(error)
+            return redirect(url_for('custom_ml', model_name=model_name, subcategory='supervised'))
+        
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = f'attachment; filename="{model_name}_custom_ml_report.xlsx"'
+        return response
+    except Exception as e:
+        logger.error(f"Error downloading report for {model_name}: {str(e)}")
+        flash(f"Error generating report: {str(e)}")
+        return redirect(url_for('custom_ml', model_name=model_name, subcategory='supervised'))
+
+
+@app.route('/download_custom_ml_testcases/<model_name>')
+def download_custom_ml_testcases(model_name):
+    """Download test cases with predictions as CSV."""
+    try:
+        output, error = export_custom_ml_csv(model_name)
+        if error:
+            flash(error)
+            return redirect(url_for('custom_ml', model_name=model_name, subcategory='supervised'))
+        
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename="{model_name}_test_results.csv"'
+        return response
+    except Exception as e:
+        logger.error(f"Error downloading test cases for {model_name}: {str(e)}")
+        flash(f"Error generating CSV: {str(e)}")
+        return redirect(url_for('custom_ml', model_name=model_name, subcategory='supervised'))
+
+
+@app.route('/clear_custom_ml_results/<model_name>', methods=['POST'])
+def clear_custom_ml_results_route(model_name):
+    """Clear custom evaluation results for a model."""
+    try:
+        clear_custom_ml_results(model_name)
+        logger.info(f"Results cleared for {model_name}")
+        return jsonify({'status': 'success', 'message': 'Results cleared successfully'})
+    except Exception as e:
+        logger.error(f"Error clearing results for {model_name}: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/custom_dl/<model_name>/<subcategory>')
 def custom_dl(model_name, subcategory):
