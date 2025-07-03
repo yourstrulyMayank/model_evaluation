@@ -121,8 +121,45 @@ class CustomMLEvaluator:
 
     
 
-    def create_predictions_data(self, y_true, y_pred, problem_type):
-        """Create structured predictions data for display"""
+    # def create_predictions_data(self, y_true, y_pred, problem_type):
+    #     """Create structured predictions data for display"""
+    #     try:
+    #         predictions_list = []
+            
+    #         for i, (actual, predicted) in enumerate(zip(y_true, y_pred)):
+    #             prediction_data = {
+    #                 'test_case': i + 1,
+    #                 'actual': str(actual),
+    #                 'predicted': str(predicted)
+    #             }
+                
+    #             if problem_type == 'classification':
+    #                 # For classification, show if prediction is correct
+    #                 is_correct = str(actual) == str(predicted)
+    #                 prediction_data['result'] = '✓ Correct' if is_correct else '✗ Incorrect'
+    #                 prediction_data['difference'] = 'Match' if is_correct else 'Mismatch'
+    #             else:
+    #                 # For regression, show numerical difference
+    #                 try:
+    #                     actual_num = float(actual)
+    #                     pred_num = float(predicted)
+    #                     difference = abs(actual_num - pred_num)
+    #                     prediction_data['result'] = f'Error: {difference:.4f}'
+    #                     prediction_data['difference'] = f'{difference:.4f}'
+    #                 except:
+    #                     prediction_data['result'] = 'N/A'
+    #                     prediction_data['difference'] = 'N/A'
+                
+    #             predictions_list.append(prediction_data)
+            
+    #         print(f"Created predictions data: {len(predictions_list)} predictions")
+    #         return predictions_list
+            
+    #     except Exception as e:
+    #         print(f"Error creating predictions data: {str(e)}")
+    #         return []
+    def create_predictions_data(self, y_true, y_pred, problem_type, X_test=None):
+        """Create structured predictions data for display with original test data"""
         try:
             predictions_list = []
             
@@ -133,10 +170,24 @@ class CustomMLEvaluator:
                     'predicted': str(predicted)
                 }
                 
+                # Add original test features if available
+                if X_test is not None:
+                    try:
+                        # Get the row data for this test case
+                        if hasattr(X_test, 'iloc'):
+                            row_data = X_test.iloc[i]
+                            for col_name, col_value in row_data.items():
+                                prediction_data[f'feature_{col_name}'] = col_value
+                        elif isinstance(X_test, np.ndarray):
+                            for j, feature_value in enumerate(X_test[i]):
+                                prediction_data[f'feature_{j}'] = feature_value
+                    except Exception as e:
+                        print(f"Error adding features for row {i}: {str(e)}")
+                
                 if problem_type == 'classification':
-                    # For classification, show if prediction is correct
+                    # For classification, show if prediction is correct (no emojis)
                     is_correct = str(actual) == str(predicted)
-                    prediction_data['result'] = '✓ Correct' if is_correct else '✗ Incorrect'
+                    prediction_data['result'] = 'Correct' if is_correct else 'Incorrect'
                     prediction_data['difference'] = 'Match' if is_correct else 'Mismatch'
                 else:
                     # For regression, show numerical difference
@@ -247,6 +298,110 @@ class CustomMLEvaluator:
             print(f"Error applying JSON preprocessing: {str(e)}")
             return X_test
     
+    # def run_evaluation(self, model_name, model_file_path, test_file_path, steps_path=None, progress_callback=None):
+    #     """Run complete ML model evaluation with comprehensive error handling"""
+    #     results = {
+    #         'model_name': model_name,
+    #         'timestamp': datetime.now().isoformat(),
+    #         'files_processed': 0,
+    #         'file_info': {
+    #             'model_file': os.path.basename(model_file_path),
+    #             'test_file': os.path.basename(test_file_path)
+    #         }
+    #     }
+        
+    #     try:
+    #         print(f"Starting evaluation for {model_name}")
+            
+    #         # Stage 1: Load Model
+    #         if progress_callback:
+    #             progress_callback(self.update_progress(1))
+            
+    #         model, error = self.load_model(model_file_path)
+    #         if error:
+    #             results['error'] = error
+    #             print(f"Model loading failed: {error}")
+    #             return results
+            
+    #         results['files_processed'] += 1
+            
+    #         # Stage 2: Load Test Data
+    #         if progress_callback:
+    #             progress_callback(self.update_progress(2))
+            
+    #         X_test, y_test, error = self.load_test_data(test_file_path, steps_path)
+    #         print(f'X_test:{X_test.head()}')
+    #         print('---------------')
+    #         print(f'y_test:{y_test.head()}')
+    #         if error:
+    #             results['error'] = error
+    #             print(f"Test data loading failed: {error}")
+    #             return results
+            
+    #         results['files_processed'] += 1
+            
+    #         # Stage 3: Make Predictions
+    #         if progress_callback:
+    #             progress_callback(self.update_progress(3))
+            
+    #         try:
+    #             print("Making predictions...")
+    #             y_pred = model.predict(X_test)
+    #             print(f'y_pred: {y_pred[:5]}... (showing first 5 predictions)')
+    #             print(f"Predictions completed: {len(y_pred)} predictions made")
+    #         except Exception as e:
+    #             error_msg = f"Prediction failed: {str(e)}"
+    #             results['error'] = error_msg
+    #             print(error_msg)
+    #             return results
+            
+    #         # Stage 4: Calculate Metrics
+    #         if progress_callback:
+    #             progress_callback(self.update_progress(4))
+            
+    #         problem_type = get_problem_type_from_model(model)
+    #         results['problem_type'] = problem_type
+    #         print(f"Problem type from model: {problem_type}")
+            
+    #         if problem_type == 'classification':
+    #             metrics, error = calculate_detailed_metrics(y_test, y_pred, problem_type, model, X_test)
+    #             if error:
+    #                 results['error'] = error
+    #                 print(f"Classification metrics calculation failed: {error}")
+    #                 return results
+    #             correct_predictions = sum(1 for actual, pred in zip(y_test, y_pred) if actual == pred)
+    #             results['accuracy_count'] = correct_predictions
+    #             results['success_rate'] = (correct_predictions / len(y_test)) * 100
+    #             print(f"Classification results: {correct_predictions}/{len(y_test)} correct ({results['success_rate']:.2f}%)")
+    #         else:  # regression
+    #             metrics, error = calculate_detailed_metrics(y_test, y_pred, problem_type, model, X_test)
+    #             if error:
+    #                 results['error'] = error
+    #                 print(f"Regression metrics calculation failed: {error}")
+    #                 return results
+    #             results['mean_error'] = float(np.mean([abs(float(actual) - float(pred)) 
+    #                                                  for actual, pred in zip(y_test, y_pred)]))
+    #             print(f"Regression results: Mean error = {results['mean_error']:.4f}")
+            
+    #         results['metrics'] = metrics
+            
+    #         # Create detailed predictions
+    #         predictions_data = self.create_predictions_data(y_test, y_pred, problem_type)
+    #         results['predictions'] = predictions_data
+    #         results['total_tests'] = len(predictions_data)
+            
+    #         # Stage 5: Finalize
+    #         if progress_callback:
+    #             progress_callback(self.update_progress(5))
+            
+    #         print(f"Evaluation completed successfully for {model_name}")
+    #         return results
+            
+    #     except Exception as e:
+    #         error_msg = f"Evaluation failed: {str(e)}"
+    #         results['error'] = error_msg
+    #         print(f"{error_msg}\n{traceback.format_exc()}")
+    #         return results
     def run_evaluation(self, model_name, model_file_path, test_file_path, steps_path=None, progress_callback=None):
         """Run complete ML model evaluation with comprehensive error handling"""
         results = {
@@ -323,19 +478,23 @@ class CustomMLEvaluator:
                 results['success_rate'] = (correct_predictions / len(y_test)) * 100
                 print(f"Classification results: {correct_predictions}/{len(y_test)} correct ({results['success_rate']:.2f}%)")
             else:  # regression
+                y_test = pd.to_numeric(y_test, errors='coerce')
+                y_pred = pd.to_numeric(y_pred, errors='coerce')
+                print("After numeric conversion, y_test head:", y_test.head())
+                print("After numeric conversion, y_pred head:", y_pred[:5])    
                 metrics, error = calculate_detailed_metrics(y_test, y_pred, problem_type, model, X_test)
                 if error:
                     results['error'] = error
                     print(f"Regression metrics calculation failed: {error}")
                     return results
                 results['mean_error'] = float(np.mean([abs(float(actual) - float(pred)) 
-                                                     for actual, pred in zip(y_test, y_pred)]))
+                                                    for actual, pred in zip(y_test, y_pred)]))
                 print(f"Regression results: Mean error = {results['mean_error']:.4f}")
             
             results['metrics'] = metrics
             
-            # Create detailed predictions
-            predictions_data = self.create_predictions_data(y_test, y_pred, problem_type)
+            # Create detailed predictions with original test data
+            predictions_data = self.create_predictions_data(y_test, y_pred, problem_type, X_test)
             results['predictions'] = predictions_data
             results['total_tests'] = len(predictions_data)
             
@@ -351,7 +510,6 @@ class CustomMLEvaluator:
             results['error'] = error_msg
             print(f"{error_msg}\n{traceback.format_exc()}")
             return results
-    
     
 
 def run_custom_ml_evaluation_task(model_name, model_file_path, test_file_path, steps_path=None):
@@ -386,6 +544,34 @@ def run_custom_ml_evaluation_task(model_name, model_file_path, test_file_path, s
         # Store results
         custom_evaluation_results[f"{model_name}_ml"] = results
         
+        # Save CSV and Excel files immediately after evaluation
+        output_dir = os.path.join("uploads", model_name)
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Save CSV
+        csv_path = os.path.join(output_dir, f"{model_name}_test_results.csv")
+        if results.get("predictions"):
+            pd.DataFrame(results["predictions"]).to_csv(csv_path, index=False)
+
+        # Save Excel
+        excel_path = os.path.join(output_dir, f"{model_name}_custom_ml_report.xlsx")
+        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+            if "predictions" in results:
+                df_predictions = pd.DataFrame(results["predictions"])
+                df_predictions.to_excel(writer, sheet_name="Test_Results", index=False)
+            metrics = results.get("metrics", {})
+            summary_data = {
+                "Metric": ["Model Name", "Evaluation Date", "Problem Type", "Total Tests"] + list(metrics.keys()),
+                "Value": [
+                    results.get("model_name", model_name),
+                    results.get("timestamp", "N/A"),
+                    results.get("problem_type", "Unknown"),
+                    results.get("total_tests", 0)
+                ] + list(metrics.values())
+            }
+            df_summary = pd.DataFrame(summary_data)
+            df_summary.to_excel(writer, sheet_name="Summary", index=False)
+
         # Update status based on results
         if results.get("error"):
             processing_status[f"{model_name}_ml_custom"] = "error"
@@ -499,6 +685,85 @@ def export_custom_ml_csv(model_name):
     output.seek(0)
     return output, None
 
+# def calculate_detailed_metrics(y_true, y_pred, problem_type, model=None, X_test=None):
+#     """Calculate comprehensive evaluation metrics (ported from evaluate_ml_supervised_mlflow.py)."""
+#     import numpy as np
+#     from sklearn.metrics import (
+#         accuracy_score, precision_score, recall_score, f1_score,
+#         mean_squared_error, mean_absolute_error, r2_score,
+#         classification_report, confusion_matrix, mean_absolute_percentage_error
+#     )
+#     from scipy import stats
+
+#     metrics = {}
+
+#     # Convert to numpy arrays for consistency
+#     y_true = np.array(y_true)
+#     y_pred = np.array(y_pred)
+
+#     # Remove NaNs for regression
+#     if problem_type == 'regression':
+#         y_true = pd.to_numeric(y_true, errors='coerce')
+#         y_pred = pd.to_numeric(y_pred, errors='coerce')
+#         mask = ~(np.isnan(y_true) | np.isnan(y_pred))
+#         y_true = y_true[mask]
+#         y_pred = y_pred[mask]
+#     # Add this check:
+#     if len(y_true) == 0 or len(y_pred) == 0:
+#         return None, "No valid numeric values found for regression metrics"
+
+#     if problem_type == 'regression':
+#         metrics['mae'] = mean_absolute_error(y_true, y_pred)
+#         metrics['mse'] = mean_squared_error(y_true, y_pred)
+#         metrics['rmse'] = np.sqrt(metrics['mse'])
+#         metrics['r2'] = r2_score(y_true, y_pred)
+#         try:
+#             metrics['mape'] = mean_absolute_percentage_error(y_true, y_pred)
+#         except:
+#             metrics['mape'] = None
+#         metrics['max_error'] = np.max(np.abs(y_true - y_pred))
+#         metrics['mean_error'] = np.mean(y_true - y_pred)
+#         metrics['std_error'] = np.std(y_true - y_pred)
+#         # Statistical tests
+#         residuals = y_true - y_pred
+#         try:
+#             _, p_value = stats.normaltest(residuals)
+#             metrics['residuals_normality_p'] = p_value
+#         except Exception:
+#             metrics['residuals_normality_p'] = None
+#         try:
+#             metrics['explained_variance'] = 1 - (np.var(residuals) / np.var(y_true))
+#         except Exception:
+#             metrics['explained_variance'] = None
+#     else:  # classification
+#         metrics['accuracy'] = accuracy_score(y_true, y_pred)
+#         metrics['precision_macro'] = precision_score(y_true, y_pred, average='macro', zero_division=0)
+#         metrics['precision_weighted'] = precision_score(y_true, y_pred, average='weighted', zero_division=0)
+#         metrics['recall_macro'] = recall_score(y_true, y_pred, average='macro', zero_division=0)
+#         metrics['recall_weighted'] = recall_score(y_true, y_pred, average='weighted', zero_division=0)
+#         metrics['f1_macro'] = f1_score(y_true, y_pred, average='macro', zero_division=0)
+#         metrics['f1_weighted'] = f1_score(y_true, y_pred, average='weighted', zero_division=0)
+#         # Per-class metrics
+#         unique_classes = np.unique(y_true)
+#         if len(unique_classes) <= 10:
+#             class_report = classification_report(y_true, y_pred, output_dict=True)
+#             for class_name in [str(c) for c in unique_classes]:
+#                 if class_name in class_report:
+#                     metrics[f'precision_class_{class_name}'] = class_report[class_name]['precision']
+#                     metrics[f'recall_class_{class_name}'] = class_report[class_name]['recall']
+#                     metrics[f'f1_class_{class_name}'] = class_report[class_name]['f1-score']
+#         # Confusion matrix stats
+#         cm = confusion_matrix(y_true, y_pred)
+#         if len(unique_classes) == 2 and cm.size == 4:
+#             tn, fp, fn, tp = cm.ravel()
+#             metrics['true_negatives'] = int(tn)
+#             metrics['false_positives'] = int(fp)
+#             metrics['false_negatives'] = int(fn)
+#             metrics['true_positives'] = int(tp)
+#             metrics['specificity'] = tn / (tn + fp) if (tn + fp) > 0 else 0
+#             metrics['sensitivity'] = tp / (tp + fn) if (tp + fn) > 0 else 0
+#     return metrics, None
+
 def calculate_detailed_metrics(y_true, y_pred, problem_type, model=None, X_test=None):
     """Calculate comprehensive evaluation metrics (ported from evaluate_ml_supervised_mlflow.py)."""
     import numpy as np
@@ -508,6 +773,18 @@ def calculate_detailed_metrics(y_true, y_pred, problem_type, model=None, X_test=
         classification_report, confusion_matrix, mean_absolute_percentage_error
     )
     from scipy import stats
+
+    def convert_to_serializable(obj):
+        """Convert numpy types to Python native types for JSON serialization"""
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return obj
 
     metrics = {}
 
@@ -527,53 +804,54 @@ def calculate_detailed_metrics(y_true, y_pred, problem_type, model=None, X_test=
         return None, "No valid numeric values found for regression metrics"
 
     if problem_type == 'regression':
-        metrics['mae'] = mean_absolute_error(y_true, y_pred)
-        metrics['mse'] = mean_squared_error(y_true, y_pred)
-        metrics['rmse'] = np.sqrt(metrics['mse'])
-        metrics['r2'] = r2_score(y_true, y_pred)
+        metrics['mae'] = convert_to_serializable(mean_absolute_error(y_true, y_pred))
+        metrics['mse'] = convert_to_serializable(mean_squared_error(y_true, y_pred))
+        metrics['rmse'] = convert_to_serializable(np.sqrt(metrics['mse']))
+        metrics['r2'] = convert_to_serializable(r2_score(y_true, y_pred))
         try:
-            metrics['mape'] = mean_absolute_percentage_error(y_true, y_pred)
+            metrics['mape'] = convert_to_serializable(mean_absolute_percentage_error(y_true, y_pred))
         except:
             metrics['mape'] = None
-        metrics['max_error'] = np.max(np.abs(y_true - y_pred))
-        metrics['mean_error'] = np.mean(y_true - y_pred)
-        metrics['std_error'] = np.std(y_true - y_pred)
+        metrics['max_error'] = convert_to_serializable(np.max(np.abs(y_true - y_pred)))
+        metrics['mean_error'] = convert_to_serializable(np.mean(y_true - y_pred))
+        metrics['std_error'] = convert_to_serializable(np.std(y_true - y_pred))
         # Statistical tests
         residuals = y_true - y_pred
         try:
             _, p_value = stats.normaltest(residuals)
-            metrics['residuals_normality_p'] = p_value
+            metrics['residuals_normality_p'] = convert_to_serializable(p_value)
         except Exception:
             metrics['residuals_normality_p'] = None
         try:
-            metrics['explained_variance'] = 1 - (np.var(residuals) / np.var(y_true))
+            metrics['explained_variance'] = convert_to_serializable(1 - (np.var(residuals) / np.var(y_true)))
         except Exception:
             metrics['explained_variance'] = None
     else:  # classification
-        metrics['accuracy'] = accuracy_score(y_true, y_pred)
-        metrics['precision_macro'] = precision_score(y_true, y_pred, average='macro', zero_division=0)
-        metrics['precision_weighted'] = precision_score(y_true, y_pred, average='weighted', zero_division=0)
-        metrics['recall_macro'] = recall_score(y_true, y_pred, average='macro', zero_division=0)
-        metrics['recall_weighted'] = recall_score(y_true, y_pred, average='weighted', zero_division=0)
-        metrics['f1_macro'] = f1_score(y_true, y_pred, average='macro', zero_division=0)
-        metrics['f1_weighted'] = f1_score(y_true, y_pred, average='weighted', zero_division=0)
+        metrics['accuracy'] = convert_to_serializable(accuracy_score(y_true, y_pred))
+        metrics['precision_macro'] = convert_to_serializable(precision_score(y_true, y_pred, average='macro', zero_division=0))
+        metrics['precision_weighted'] = convert_to_serializable(precision_score(y_true, y_pred, average='weighted', zero_division=0))
+        metrics['recall_macro'] = convert_to_serializable(recall_score(y_true, y_pred, average='macro', zero_division=0))
+        metrics['recall_weighted'] = convert_to_serializable(recall_score(y_true, y_pred, average='weighted', zero_division=0))
+        metrics['f1_macro'] = convert_to_serializable(f1_score(y_true, y_pred, average='macro', zero_division=0))
+        metrics['f1_weighted'] = convert_to_serializable(f1_score(y_true, y_pred, average='weighted', zero_division=0))
         # Per-class metrics
         unique_classes = np.unique(y_true)
         if len(unique_classes) <= 10:
             class_report = classification_report(y_true, y_pred, output_dict=True)
             for class_name in [str(c) for c in unique_classes]:
                 if class_name in class_report:
-                    metrics[f'precision_class_{class_name}'] = class_report[class_name]['precision']
-                    metrics[f'recall_class_{class_name}'] = class_report[class_name]['recall']
-                    metrics[f'f1_class_{class_name}'] = class_report[class_name]['f1-score']
+                    metrics[f'precision_class_{class_name}'] = convert_to_serializable(class_report[class_name]['precision'])
+                    metrics[f'recall_class_{class_name}'] = convert_to_serializable(class_report[class_name]['recall'])
+                    metrics[f'f1_class_{class_name}'] = convert_to_serializable(class_report[class_name]['f1-score'])
         # Confusion matrix stats
         cm = confusion_matrix(y_true, y_pred)
         if len(unique_classes) == 2 and cm.size == 4:
             tn, fp, fn, tp = cm.ravel()
-            metrics['true_negatives'] = int(tn)
-            metrics['false_positives'] = int(fp)
-            metrics['false_negatives'] = int(fn)
-            metrics['true_positives'] = int(tp)
-            metrics['specificity'] = tn / (tn + fp) if (tn + fp) > 0 else 0
-            metrics['sensitivity'] = tp / (tp + fn) if (tp + fn) > 0 else 0
+            metrics['true_negatives'] = convert_to_serializable(tn)
+            metrics['false_positives'] = convert_to_serializable(fp)
+            metrics['false_negatives'] = convert_to_serializable(fn)
+            metrics['true_positives'] = convert_to_serializable(tp)
+            metrics['specificity'] = convert_to_serializable(tn / (tn + fp) if (tn + fp) > 0 else 0)
+            metrics['sensitivity'] = convert_to_serializable(tp / (tp + fn) if (tp + fn) > 0 else 0)
+    
     return metrics, None

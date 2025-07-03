@@ -356,9 +356,9 @@ def get_ml_evaluation_progress(model_name):
 
 
 
-
 def convert_numpy_types(obj):
     """Recursively convert numpy types to native Python types for JSON serialization."""
+    import numpy as np
     if isinstance(obj, dict):
         return {k: convert_numpy_types(v) for k, v in obj.items()}
     elif isinstance(obj, list):
@@ -367,6 +367,8 @@ def convert_numpy_types(obj):
         return int(obj)
     elif isinstance(obj, np.floating):
         return float(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
     elif isinstance(obj, np.ndarray):
         return obj.tolist()
     else:
@@ -746,25 +748,26 @@ def check_custom_ml_status(model_name):
         status = processing_status.get(f"{model_name}_ml_custom", "not_started")
         results = custom_evaluation_results.get(f"{model_name}_ml", {})
         progress = custom_evaluation_progress.get(model_name, {})
+
         
-        # Fix the response structure to match what JavaScript expects
+        
         if status == "complete" and results and not results.get('error'):
-            return jsonify({
+            return jsonify(convert_numpy_types({
                 'status': 'complete',
-                'results': results,  # Pass actual results
+                'results': results,
                 'progress': progress
-            })
+            }))
         elif status == "error" or results.get('error'):
-            return jsonify({
+            return jsonify(convert_numpy_types({
                 'status': 'error',
                 'results': results,
                 'progress': progress
-            })
+            }))
         else:
-            return jsonify({
+            return jsonify(convert_numpy_types({
                 'status': 'processing',
                 'progress': progress
-            })
+            }))
             
     except Exception as e:
         logger.error(f"Error checking status for {model_name}: {str(e)}")
@@ -776,34 +779,31 @@ def check_custom_ml_status(model_name):
 def download_custom_ml_report(model_name):
     """Download custom ML evaluation report as Excel."""
     try:
-        output, error = export_custom_ml_excel(model_name)
-        if error:
-            flash(error)
+        excel_path = os.path.join('uploads', model_name, f"{model_name}_custom_ml_report.xlsx")
+        print(excel_path)
+        if not os.path.exists(excel_path):
+            print("file not found")
+            flash("Excel report not found. Please re-run evaluation.")
             return redirect(url_for('custom_ml', model_name=model_name, subcategory='supervised'))
-        
-        response = make_response(output.getvalue())
-        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        response.headers['Content-Disposition'] = f'attachment; filename="{model_name}_custom_ml_report.xlsx"'
-        return response
+        return send_file(excel_path, as_attachment=True, download_name=f"{model_name}_custom_ml_report.xlsx")
     except Exception as e:
         logger.error(f"Error downloading report for {model_name}: {str(e)}")
         flash(f"Error generating report: {str(e)}")
         return redirect(url_for('custom_ml', model_name=model_name, subcategory='supervised'))
 
 
+
 @app.route('/download_custom_ml_testcases/<model_name>')
 def download_custom_ml_testcases(model_name):
     """Download test cases with predictions as CSV."""
     try:
-        output, error = export_custom_ml_csv(model_name)
-        if error:
-            flash(error)
+        csv_path = os.path.join('uploads', model_name, f"{model_name}_test_results.csv")
+        print(csv_path)
+        if not os.path.exists(csv_path):
+            print("file not found")
+            flash("CSV results not found. Please re-run evaluation.")
             return redirect(url_for('custom_ml', model_name=model_name, subcategory='supervised'))
-        
-        response = make_response(output.getvalue())
-        response.headers['Content-Type'] = 'text/csv'
-        response.headers['Content-Disposition'] = f'attachment; filename="{model_name}_test_results.csv"'
-        return response
+        return send_file(csv_path, as_attachment=True, download_name=f"{model_name}_test_results.csv")
     except Exception as e:
         logger.error(f"Error downloading test cases for {model_name}: {str(e)}")
         flash(f"Error generating CSV: {str(e)}")
@@ -821,6 +821,39 @@ def clear_custom_ml_results_route(model_name):
         logger.error(f"Error clearing results for {model_name}: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/api/start_evaluation/<model_name>', methods=['POST'])
+def api_start_evaluation(model_name):
+    """
+    API endpoint to start or restart ML evaluation for a model.
+    This will clear previous results and start a new evaluation.
+    """
+    try:
+        # You may want to get subcategory and benchmark from request if needed
+        subcategory = request.json.get('subcategory', 'supervised')
+        benchmark = request.json.get('benchmark', 'MLflow')
+
+        # Paths for model and test data
+        
+        model_path = os.path.join('models', 'ml', subcategory, model_name, 'model')
+        dataset_path = os.path.join('models', 'ml', subcategory, model_name, 'dataset')        
+        test_csv_path = os.path.join(dataset_path, 'test.csv')  # Look for test.csv in model directory
+        model_file_path = os.path.join(model_path, 'model.pkl')  # Look for model.pkl
+        # Validate paths
+        if not os.path.exists(model_path) or not os.path.exists(test_csv_path):
+            return jsonify({'error': 'Model or test data not found'}), 400
+
+        # Clear previous progress/results
+        clear_ml_progress(model_name)
+
+        # Start evaluation in background
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(run_ml_evaluation, model_name, model_file_path, test_csv_path)
+
+        return jsonify({'status': 'started', 'message': 'Evaluation started successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 @app.route('/custom_dl/<model_name>/<subcategory>')
 def custom_dl(model_name, subcategory):
     """Custom evaluation page for DL models."""
