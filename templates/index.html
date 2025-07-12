@@ -371,14 +371,14 @@
                     {% endfor %}
                 </select>
                 <div class="buttons">
-                    <form action="{{ url_for('evaluate_llm', model_name=model) }}" method="post">
+                    <form action="{{ url_for('llm_t_bb.evaluate_llm', model_name=model) }}" method="post">
                         <input type="hidden" name="benchmark" id="benchmark-input-llm-{{ loop.index }}">
                         <button class="eval-btn" type="submit" onclick="setBenchmark('llm', {{ loop.index }})">Evaluate</button>
                     </form>
-                    <form method="GET" action="{{ url_for('history', category='LLMs', model_name=model) }}" style="display:inline;">
+                    <form method="GET" action="{{ url_for('llm_t_bb.history', category='LLMs', model_name=model) }}" style="display:inline;">
                         <button class="history-btn" type="submit">History</button>
                     </form>
-                    <form action="{{ url_for('custom_llm', model_name=model) }}" method="get">
+                    <form action="{{ url_for('llm_custom.custom_llm', model_name=model) }}" method="get">
                         <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
                     </form>
                 </div>
@@ -410,14 +410,14 @@
                             {% endfor %}
                         </select>
                         <div class="buttons">
-                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='supervised') }}" method="post">
+                            <form action="{{ url_for('ml_s_t_mlflow.evaluate_ml', model_name=model, subcategory='supervised') }}" method="post">
                                 <input type="hidden" name="benchmark" id="benchmark-input-ml-supervised-{{ loop.index }}">
                                 <button class="eval-btn" type="submit" onclick="setBenchmark('ml-supervised', {{ loop.index }})">Evaluate</button>
                             </form>
-                            <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
+                            <form method="GET" action="{{ url_for('ml_s_h.history', category='ML Models', model_name=model) }}" style="display:inline;">
                                 <button class="history-btn" type="submit">History</button>
                             </form>
-                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='supervised') }}" method="get">
+                            <form action="{{ url_for('ml_s_c.custom_ml', model_name=model, subcategory='supervised') }}" method="get">
                                 <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
                             </form>
                         </div>
@@ -438,14 +438,14 @@
                             {% endfor %}
                         </select>
                         <div class="buttons">
-                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='unsupervised') }}" method="post">
+                            <form action="{{ url_for('ml_s_t_mlflow.evaluate_ml', model_name=model, subcategory='unsupervised') }}" method="post">
                                 <input type="hidden" name="benchmark" id="benchmark-input-ml-unsupervised-{{ loop.index }}">
                                 <button class="eval-btn" type="submit" onclick="setBenchmark('ml-unsupervised', {{ loop.index }})">Evaluate</button>
                             </form>
-                            <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
+                            <form method="GET" action="{{ url_for('ml_s_h.history', category='ML Models', model_name=model) }}" style="display:inline;">
                                 <button class="history-btn" type="submit">History</button>
                             </form>
-                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='unsupervised') }}" method="get">
+                            <form action="{{ url_for('ml_s_c.custom_ml', model_name=model, subcategory='unsupervised') }}" method="get">
                                 <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
                             </form>
                         </div>
@@ -467,14 +467,14 @@
                             {% endfor %}
                         </select>
                         <div class="buttons">
-                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='reinforcement') }}" method="post">
+                            <form action="{{ url_for('ml_s_t_mlflow.evaluate_ml', model_name=model, subcategory='reinforcement') }}" method="post">
                                 <input type="hidden" name="benchmark" id="benchmark-input-ml-reinforcement-{{ loop.index }}">
                                 <button class="eval-btn" type="submit" onclick="setBenchmark('ml-reinforcement', {{ loop.index }})">Evaluate</button>
                             </form>
-                            <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
+                            <form method="GET" action="{{ url_for('ml_s_h.history', category='ML Models', model_name=model) }}" style="display:inline;">
                                 <button class="history-btn" type="submit">History</button>
                             </form>
-                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='reinforcement') }}" method="get">
+                            <form action="{{ url_for('ml_s_c.custom_ml', model_name=model, subcategory='reinforcement') }}" method="get">
                                 <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
                             </form>
                         </div>
@@ -495,14 +495,14 @@
                             {% endfor %}
                         </select>
                         <div class="buttons">
-                            <form action="{{ url_for('evaluate_ml', model_name=model, subcategory='others') }}" method="post">
+                            <form action="{{ url_for('ml_s_t_mlflow.evaluate_ml', model_name=model, subcategory='others') }}" method="post">
                                 <input type="hidden" name="benchmark" id="benchmark-input-ml-others-{{ loop.index }}">
                                 <button class="eval-btn" type="submit" onclick="setBenchmark('ml-others', {{ loop.index }})">Evaluate</button>
                             </form>
-                            <form method="GET" action="{{ url_for('history', category='ML Models', model_name=model) }}" style="display:inline;">
+                            <form method="GET" action="{{ url_for('ml_s_h.history', category='ML Models', model_name=model) }}" style="display:inline;">
                                 <button class="history-btn" type="submit">History</button>
                             </form>
-                            <form action="{{ url_for('custom_ml', model_name=model, subcategory='others') }}" method="get">
+                            <form action="{{ url_for('ml_s_c.custom_ml', model_name=model, subcategory='others') }}" method="get">
                                 <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
                             </form>
                         </div>
@@ -626,14 +626,14 @@
                     {% endfor %}
                 </select>
                 <div class="buttons">
-                    <form action="{{ url_for('evaluate_genai', model_name=model) }}" method="post">
+                    <form action="{{ url_for('genai_t.evaluate_genai', model_name=model) }}" method="post">
                         <input type="hidden" name="benchmark" id="benchmark-input-genai-{{ loop.index }}">
                         <button class="eval-btn" type="submit" onclick="setBenchmark('genai', {{ loop.index }})">Evaluate</button>
                     </form>
-                    <form method="GET" action="{{ url_for('history', category='Other GenAI Models', model_name=model) }}" style="display:inline;">
+                    <form method="GET" action="{{ url_for('genai_h.history', category='Other GenAI Models', model_name=model) }}" style="display:inline;">
                         <button class="history-btn" type="submit">History</button>
                     </form>
-                    <form action="{{ url_for('custom_genai', model_name=model) }}" method="get">
+                    <form action="{{ url_for('genai_c.custom_genai', model_name=model) }}" method="get">
                         <button class="cstm-eval-btn" type="submit">Custom Evaluation</button>
                     </form>
                 </div>

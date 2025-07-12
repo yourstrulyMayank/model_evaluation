@@ -1,0 +1,62 @@
+<!-- filepath: f:\evaluator\model_evaluation\templates\history_ml.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ML Model Evaluation History - {{ model_name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #fffbe7; color: #222; }
+        .container { max-width: 1100px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px #e0e0e0; padding: 32px; }
+        h1 { font-size: 2.2em; margin-bottom: 0.5em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 2em; }
+        th, td { border: 1px solid #e0e0e0; padding: 10px 14px; text-align: center; }
+        th { background: #f5e6ca; }
+        .summary { margin-top: 2em; }
+        .summary h3 { margin-bottom: 0.5em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ML Model Evaluation History</h1>
+        <h2>{{ model_name }} ({{ category|capitalize }})</h2>
+        <div class="summary">
+            <h3>Summary</h3>
+            <p>Benchmarks tested: {{ benchmark_stats.benchmarks_tested }}</p>
+            <p>Overall average: {{ benchmark_stats.overall_average|round(2) }}</p>
+            <p>Best score: {{ benchmark_stats.best_score|round(2) }}</p>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Run</th>
+                    {% for benchmark in benchmark_list %}
+                        <th>{{ benchmark }}</th>
+                    {% endfor %}
+                    <th>Average</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in history_data %}
+                <tr>
+                    <td>{{ entry.run }}</td>
+                    {% for benchmark in benchmark_list %}
+                        <td>
+                            {{ entry.scores[benchmark]|default('N/A') }}
+                        </td>
+                    {% endfor %}
+                    <td>{{ entry.average|round(2) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="summary">
+            <h3>Benchmark Averages</h3>
+            <ul>
+                {% for benchmark, avg in benchmark_averages.items() %}
+                    <li>{{ benchmark }}: {{ avg|round(2) if avg != 'N/A' else 'N/A' }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

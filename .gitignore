@@ -8,3 +8,4 @@ static/plots/
 mlruns/
 temp_datasets/
 results/
+**/__pycache__/
