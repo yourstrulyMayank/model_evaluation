@@ -7,6 +7,7 @@ import numpy as np
 from datetime import datetime
 import mlflow
 import mlflow.sklearn
+import xgboost as xgb
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     mean_squared_error, mean_absolute_error, r2_score,
@@ -16,7 +17,7 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
-from create_plots_ml_supervised import (
+from .create_plots_ml_supervised import (
     generate_model_summary_plots, create_regression_plots, create_classification_plots)
 import warnings
 warnings.filterwarnings('ignore')
@@ -66,30 +67,47 @@ def load_model(model_path):
     except Exception as e:
         print(f"Error loading model: {e}")
         return None
-
 def detect_problem_type(model):
-    """Detect if it's classification or regression based on model type."""
     model_type = type(model).__name__.lower()
-    
-    # Common classification models
-    classification_keywords = ['classifier', 'logistic', 'svm', 'randomforest', 'decisiontree', 
-                             'gradient', 'xgb', 'lgb', 'naive', 'knn', 'ada', 'extra', 'voting']
-    
-    # Common regression models  
+    # Check regression keywords first!
     regression_keywords = ['regression', 'regressor', 'linear', 'ridge', 'lasso', 'elastic']
-    
-    for keyword in classification_keywords:
-        if keyword in model_type:
-            print(f"Detected classification model: {model_type}")
-            return 'classification'
-    
+    classification_keywords = ['classifier', 'logistic', 'svm', 'randomforest', 'decisiontree', 
+                               'gradient', 'xgb', 'lgb', 'naive', 'knn', 'ada', 'extra', 'voting']
     for keyword in regression_keywords:
         if keyword in model_type:
             print(f"Detected regression model: {model_type}")
             return 'regression'
+    for keyword in classification_keywords:
+        if keyword in model_type:
+            print(f"Detected classification model: {model_type}")
+            return 'classification'
     print('--------------------------------------------')
     # Default to regression if uncertain
     return 'regression'
+
+# def detect_problem_type(model):
+#     """Detect if it's classification or regression based on model type."""
+#     model_type = type(model).__name__.lower()
+    
+#     # Common classification models
+#     classification_keywords = ['classifier', 'logistic', 'svm', 'randomforest', 'decisiontree', 
+#                              'gradient', 'xgb', 'lgb', 'naive', 'knn', 'ada', 'extra', 'voting']
+    
+#     # Common regression models  
+#     regression_keywords = ['regression', 'regressor', 'linear', 'ridge', 'lasso', 'elastic']
+    
+#     for keyword in classification_keywords:
+#         if keyword in model_type:
+#             print(f"Detected classification model: {model_type}")
+#             return 'classification'
+    
+#     for keyword in regression_keywords:
+#         if keyword in model_type:
+#             print(f"Detected regression model: {model_type}")
+#             return 'regression'
+#     print('--------------------------------------------')
+#     # Default to regression if uncertain
+#     return 'regression'
 
 def round_if_needed(preds, model_name):
     """Round predictions if needed based on model name."""
